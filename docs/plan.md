@@ -25,16 +25,16 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 
 ## 2. Backend Foundation
 
-- [ ] **Database Schema & Migrations (Drizzle ORM)**
-  - [ ] Define initial database schema for storing analysis results (`analyses` table with UUID `id` and `JSONB` `result` field).
-  - [ ] Generate initial Drizzle migration files.
-  - [ ] Setup Drizzle Kit for managing migrations.
-- [ ] **Session Management (Account-less)**
-  - [ ] Design strategy for tracking user sessions across payment and analysis steps (e.g., temporary session ID, linking payment ID to analysis process).
-  - [ ] Implement secure temporary storage mechanism for session data (e.g., Redis, or temporary DB table - decide).
+- [x] **Database Schema & Migrations (Drizzle ORM)**
+  - [x] Define initial database schema for storing analysis results (`analyses` table with UUID `id` and `JSONB` `result` field).
+  - [x] Generate initial Drizzle migration files.
+  - [x] Setup Drizzle Kit for managing migrations.
+- [x] **Session Management (Account-less)**
+  - [x] Design strategy for tracking user sessions across payment and analysis steps (e.g., temporary session ID, linking payment ID to analysis process).
+  - [x] Implement secure temporary storage mechanism for session data (e.g., Redis, or temporary DB table - decide).
 - [ ] **Core Services & Utilities**
-  - [ ] Implement utility for generating unique IDs (UUID v4).
-  - [ ] Setup client for Google Cloud Vision API.
+  - [x] Implement utility for generating unique IDs (UUID v4).
+  - [x] Setup client for Google Cloud Vision API.
   - [ ] Setup client for Vercel AI SDK (configured for OpenAI/Anthropic).
   - [ ] Setup client for Supabase database interactions using Drizzle.
   - [ ] Implement secure API key management (environment variables, secrets manager).
