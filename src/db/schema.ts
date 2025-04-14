@@ -20,6 +20,7 @@ export const analyses = pgTable("analyses", {
 
 export const sessionStatusEnum = pgEnum("session_status", [
   "pending_payment",
+  "payment_complete",
   "payment_failed",
   "awaiting_selfie",
   "selfie_validation_failed",

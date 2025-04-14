@@ -11,6 +11,9 @@
   "dependencies": {
     "@ai-sdk/google": "^1.2.11",
     "@google-cloud/vision": "^5.1.0",
+    "@ngrok/ngrok": "^1.4.1",
+    "@polar-sh/nextjs": "^0.3.23",
+    "@polar-sh/sdk": "^0.32.7",
     "ai": "^4.3.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
