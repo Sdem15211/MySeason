@@ -46,7 +46,7 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 
 ## 3. Feature-specific Backend
 
-- [x] **Payment Integration (Polar)**
+- [x] **Payment Integration (Stripe)**
   - [x] API endpoint to initiate payment checkout session.
     - [x] Generate payment intent/session with the provider.
     - [x] Return checkout URL/ID to the frontend.
