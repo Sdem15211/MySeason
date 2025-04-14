@@ -11,6 +11,7 @@ Before responding to any request, follow these steps:
    - Note explicit and implicit requirements
    - Define core problem and desired outcome
    - Consider project context and constraints
+   - Checkout the codebase to find relevant files and dependencies before implementing.
 
 2. Solution Planning
 

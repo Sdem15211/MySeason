@@ -35,7 +35,7 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 - [ ] **Core Services & Utilities**
   - [x] Implement utility for generating unique IDs (UUID v4).
   - [x] Setup client for Google Cloud Vision API.
-  - [ ] Setup client for Vercel AI SDK (configured for OpenAI/Anthropic).
+  - [x] Setup client for Vercel AI SDK (configured for Google Gemini).
   - [ ] Setup client for Supabase database interactions using Drizzle.
   - [ ] Implement secure API key management (environment variables, secrets manager).
   - [ ] Implement robust error handling and logging framework.
