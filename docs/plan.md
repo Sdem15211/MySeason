@@ -46,15 +46,15 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 
 ## 3. Feature-specific Backend
 
-- [ ] **Payment Integration (Stripe)**
-  - [ ] API endpoint to initiate payment checkout session.
-    - [ ] Generate payment intent/session with the provider.
-    - [ ] Return checkout URL/ID to the frontend.
-    - [ ] Store temporary payment session details.
-  - [ ] API endpoint (webhook) to handle payment confirmation.
-    - [ ] Securely validate webhook signature.
-    - [ ] Update internal session state upon successful payment.
-    - [ ] Handle payment failures/cancellations.
+- [x] **Payment Integration (Polar)**
+  - [x] API endpoint to initiate payment checkout session.
+    - [x] Generate payment intent/session with the provider.
+    - [x] Return checkout URL/ID to the frontend.
+    - [x] Store temporary payment session details.
+  - [x] API endpoint (webhook) to handle payment confirmation.
+    - [x] Securely validate webhook signature.
+    - [x] Update internal session state upon successful payment.
+    - [x] Handle payment failures/cancellations.
 - [ ] **Selfie Upload & Validation**
   - [ ] API endpoint to receive uploaded selfie image.
     - [ ] Implement secure temporary storage for the uploaded image linked to the session ID/payment ID.

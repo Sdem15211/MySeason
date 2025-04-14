@@ -3,14 +3,6 @@ import { db } from "@/db/index";
 import { sessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// Define a simple interface for the expected checkout data within the payload.
-// Replace with actual type from Polar SDK if identified.
-interface CheckoutData {
-  id: string;
-  status: string;
-  metadata?: { [key: string]: unknown };
-}
-
 const polarWebhookSecret = process.env.POLAR_WEBHOOK_SECRET;
 
 if (!polarWebhookSecret) {
@@ -27,16 +19,13 @@ export const POST = Webhooks({
 
     switch (payload.type) {
       case "checkout.updated": {
-        const checkoutData = payload.data as CheckoutData;
+        const checkoutData = payload.data;
         console.log(
           `Webhook: Handling checkout.updated for ID: ${checkoutData.id}, Status: ${checkoutData.status}`
         );
 
         // Extract sessionId from metadata
-        const sessionId = checkoutData.metadata?.sessionId as
-          | string
-          | undefined;
-
+        const sessionId = checkoutData.customerExternalId;
         if (!sessionId) {
           console.warn(
             `Webhook: checkout.updated event for ${checkoutData.id} missing sessionId in metadata.`

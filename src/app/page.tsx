@@ -31,9 +31,7 @@ export default function Home() {
       }
 
       // 2. Construct Polar checkout URL with metadata
-      const metadata = { sessionId };
-      const encodedMetadata = encodeURIComponent(JSON.stringify(metadata));
-      const checkoutUrl = `/api/v1/checkout?productId=${productId}&metadata=${encodedMetadata}`;
+      const checkoutUrl = `/api/v1/checkout?productId=${productId}&customerExternalId=${sessionId}`;
 
       // 3. Redirect user to Polar via our API route using standard browser navigation
       // router.push(checkoutUrl); // Replace this
