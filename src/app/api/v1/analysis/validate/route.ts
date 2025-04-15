@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { validateSelfieImage } from "@/lib/vision";
+import { db } from "@/db";
+import { sessions } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   console.log("Received POST request to /api/v1/analysis/validate");
@@ -22,6 +25,7 @@ export async function POST(request: NextRequest) {
     blobUrlToDelete = blobUrl;
 
     if (!sessionId || typeof sessionId !== "string") {
+      if (blobUrlToDelete) await del(blobUrlToDelete);
       return NextResponse.json(
         {
           success: false,
@@ -62,25 +66,105 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `Validation successful for session: ${sessionId}, Blob URL: ${blobUrl}`
+      `Validation successful for session: ${sessionId}. Updating database.`
     );
-    blobUrlToDelete = null;
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Image validated successfully.",
-        landmarks: validationResult.landmarks,
-      },
-      { status: 200 }
-    );
+    try {
+      const currentSession = await db
+        .select({
+          id: sessions.id,
+          status: sessions.status,
+        })
+        .from(sessions)
+        .where(eq(sessions.id, sessionId))
+        .limit(1);
+
+      if (!currentSession || currentSession.length === 0) {
+        console.error(`Session not found for ID: ${sessionId}`);
+        await del(blobUrl);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "SESSION_NOT_FOUND",
+            message: "Session ID not found.",
+          },
+          { status: 404 }
+        );
+      }
+
+      const session = currentSession[0];
+
+      if (!session) {
+        console.error(`Session not found for ID: ${sessionId}`);
+        await del(blobUrl);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "SESSION_NOT_FOUND",
+            message: "Session ID not found.",
+          },
+          { status: 404 }
+        );
+      }
+      if (session.status !== "payment_complete") {
+        console.warn(
+          `Session ${sessionId} is in unexpected state: ${session.status}. Expected 'payment_complete'.`
+        );
+        await del(blobUrl);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "INVALID_SESSION_STATE",
+            message: `Session is in an unexpected state (${session.status}).`,
+          },
+          { status: 409 }
+        );
+      }
+
+      await db
+        .update(sessions)
+        .set({
+          status: "awaiting_questionnaire",
+          uploadedImagePath: blobUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, sessionId));
+
+      console.log(
+        `Session ${sessionId} updated successfully to awaiting_questionnaire.`
+      );
+
+      blobUrlToDelete = null;
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Image validated and session updated.",
+        },
+        { status: 200 }
+      );
+    } catch (dbError) {
+      console.error(
+        `Database error updating session ${sessionId} after validation:`,
+        dbError
+      );
+      if (blobUrl) await del(blobUrl);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "DATABASE_UPDATE_ERROR",
+          message: "Failed to update session after validation.",
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "Unknown error in validation route";
     console.error(
-      `Error in validation route handler for ${blobUrlToDelete}:`,
+      `Error in validation route handler for blob ${blobUrlToDelete ?? "N/A"}:`,
       error
     );
 

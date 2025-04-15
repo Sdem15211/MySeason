@@ -60,52 +60,52 @@ The initial product will be a Minimum Viable Product (MVP) web application built
 ## 4. Functional requirements
 
 - **Payment Integration** (Priority: High)
-  - Redirect user to a payment provider (Stripe) upon starting a new analysis.
-  - Securely process one-time payments.
-  - Receive and validate payment confirmation via webhooks.
-  - Handle payment failures gracefully, providing user feedback.
+  - [x] Redirect user to a payment provider (Stripe) upon starting a new analysis.
+  - [x] Securely process one-time payments.
+  - [x] Receive and validate payment confirmation via webhooks.
+  - [x] Handle payment failures gracefully, providing user feedback.
 - **Selfie Upload & Capture** (Priority: High)
-  - Provide clear instructions for taking a good quality selfie (lighting, pose).
-  - Offer QR code flow for desktop users to use their mobile camera.
-  - Implement direct browser camera access (`getUserMedia`) for mobile/QR flow.
-  - Display a camera overlay guide (face outline, eye line) to aid positioning.
-  - Allow photo preview before uploading.
-  - Temporarily store uploaded photo linked to the paid session.
+  - [ ] Provide clear instructions for taking a good quality selfie (lighting, pose).
+  - [ ] Offer QR code flow for desktop users to use their mobile camera.
+  - [ ] Implement direct browser camera access (`getUserMedia`) for mobile/QR flow.
+  - [ ] Display a camera overlay guide (face outline, eye line) to aid positioning.
+  - [ ] Allow photo preview before uploading.
+  - [x] Temporarily store uploaded photo linked to the paid session.
 - **Image Quality Validation** (Priority: High)
-  - Utilize Google Cloud Vision API (`FACE_DETECTION`) results.
-  - Check for exactly one face detected.
-  - Validate `detectionConfidence` and `landmarkingConfidence` against thresholds.
-  - Validate `underExposedLikelihood` and `blurredLikelihood` against thresholds.
-  - Provide specific user feedback on failure and allow re-upload.
+  - [x] Utilize Google Cloud Vision API (`FACE_DETECTION`) results.
+  - [x] Check for exactly one face detected.
+  - [x] Validate `detectionConfidence` and `landmarkingConfidence` against thresholds.
+  - [x] Validate `underExposedLikelihood` and `blurredLikelihood` against thresholds.
+  - [x] Provide specific user feedback on failure and allow re-upload.
 - **Questionnaire** (Priority: High)
-  - Present a short (<10 questions) form after successful image validation.
-  - Gather data like gender preference (for makeup), age range, personality keywords, context for advice.
-  - Temporarily store answers linked to the session.
+  - [x] Present a short (<10 questions) form after successful image validation.
+  - [x] Gather data like gender preference (for makeup), age range, personality keywords, context for advice.
+  - [x] Temporarily store answers linked to the session.
 - **Backend Analysis Pipeline** (Priority: High)
-  - Retrieve landmarks from validated Vision API response.
-  - Use `sharp` library to extract small image regions around key landmarks (eyes, cheeks, forehead/eyebrows).
-  - Calculate average color (HEX/RGB) for skin, eyes, and hair regions.
-  - Combine extracted colors and questionnaire answers into a structured input.
-  - Invoke LLM (via Vercel AI SDK) with a detailed prompt requesting structured JSON output (season, palettes, advice).
-  - **Crucially, this entire pipeline must be exposed via a well-defined API endpoint suitable for consumption by both web and future mobile clients.**
+  - [ ] Retrieve landmarks from validated Vision API response.
+  - [ ] Use `sharp` library to extract small image regions around key landmarks (eyes, cheeks, forehead/eyebrows).
+  - [ ] Calculate average color (HEX/RGB) for skin, eyes, and hair regions.
+  - [ ] Combine extracted colors and questionnaire answers into a structured input.
+  - [x] Invoke LLM (via Vercel AI SDK) with a detailed prompt requesting structured JSON output (season, palettes, advice).
+  - [x] **Crucially, this entire pipeline must be exposed via a well-defined API endpoint suitable for consumption by both web and future mobile clients.**
 - **Result Generation and Storage** (Priority: High)
-  - Generate a unique analysis ID (UUID v4) upon successful LLM response.
-  - Store the complete LLM analysis result (`JSONB` format) in the database (Supabase/PostgreSQL) linked to the unique ID.
-  - Delete temporary input data (photo, answers).
+  - [x] Generate a unique analysis ID (UUID v4) upon successful LLM response.
+  - [x] Store the complete LLM analysis result (`JSONB` format) in the database (Supabase/PostgreSQL) linked to the unique ID.
+  - [ ] Delete temporary input data (photo, answers).
 - **Result Display** (Priority: High)
-  - Redirect user to a unique results page (`/analysis/[id]`).
-  - Render the full analysis content from the database based on the ID.
-  - Display the unique analysis ID clearly.
-  - Provide a "Copy ID" button.
-  - Instruct user to save the ID/URL for future access.
+  - [x] Redirect user to a unique results page (`/analysis/[id]`).
+  - [ ] Render the full analysis content from the database based on the ID.
+  - [ ] Display the unique analysis ID clearly.
+  - [ ] Provide a "Copy ID" button.
+  - [ ] Instruct user to save the ID/URL for future access.
 - **Personal Card Generation & Download** (Priority: High)
-  - Generate a visually appealing summary image (PNG/JPG) based on analysis results.
-  - Implement generation (client-side `html2canvas` or server-side `sharp`/headless browser).
-  - Provide a button to download the generated card.
+  - [ ] Generate a visually appealing summary image (PNG/JPG) based on analysis results.
+  - [ ] Implement generation (client-side `html2canvas` or server-side `sharp`/headless browser).
+  - [ ] Provide a button to download the generated card.
 - **Retrieve Previous Analysis** (Priority: Medium)
-  - Provide an input field on the homepage to enter a previously saved analysis ID.
-  - Query the backend API to find the analysis by ID.
-  - Redirect to the results page if found, show error if not found.
+  - [ ] Provide an input field on the homepage to enter a previously saved analysis ID.
+  - [ ] Query the backend API to find the analysis by ID.
+  - [ ] Redirect to the results page if found, show error if not found.
 
 ## 5. User experience
 
@@ -219,13 +219,13 @@ Alex, keen to refine their professional look, feels lost in the world of color t
 ### 9.3. Suggested phases
 
 - **Phase 1: Backend Core & API Setup (1-2 weeks)**
-  - Key deliverables: Setup Next.js project, Supabase DB schema, basic API routes structure, integrate payment provider (initiation & basic webhook), setup Google Cloud Vision API auth, setup Vercel AI SDK auth. Define API contracts.
+  - Key deliverables: [x] Setup Next.js project, [x] Supabase DB schema, [x] basic API routes structure, [x] integrate payment provider (initiation & basic webhook), [x] setup Google Cloud Vision API auth, [x] setup Vercel AI SDK auth. [x] Define API contracts.
 - **Phase 2: Core Analysis Pipeline (2-3 weeks)**
-  - Key deliverables: Implement secure temporary storage, integrate Vision API for landmark detection, integrate `sharp` for color extraction from landmarks, implement detailed LLM prompting and response handling, implement result saving to DB with unique ID. **Focus on API reusability.**
+  - Key deliverables: [x] Implement secure temporary storage, [x] integrate Vision API for landmark detection, [ ] integrate `sharp` for color extraction from landmarks, [x] implement detailed LLM prompting and response handling (basic placeholder), [x] implement result saving to DB with unique ID. [x] **Focus on API reusability.** (Endpoints created)
 - **Phase 3: Frontend UI & User Flow (2-3 weeks)**
-  - Key deliverables: Build homepage, payment initiation UI, selfie upload page (with QR/overlay), quality check feedback loop, questionnaire form, results display page, implement "View Previous" flow, integrate "Copy ID" and basic "Download Card" (placeholder if needed). Implement responsive design.
+  - Key deliverables: [x] Build homepage, [x] payment initiation UI, [x] selfie upload page (basic implementation), [x] quality check feedback loop, [x] questionnaire form, [ ] results display page, [ ] implement "View Previous" flow, [ ] integrate "Copy ID" and [ ] basic "Download Card" (placeholder if needed). [x] Implement responsive design (basic).
 - **Phase 4: Polishing & Testing (1 week)**
-  - Key deliverables: Refine UI/UX, implement detailed "Personal Card" generation, thorough end-to-end testing, implement error handling, write privacy policy, prepare for deployment.
+  - Key deliverables: [ ] Refine UI/UX, [ ] implement detailed "Personal Card" generation, [x] thorough end-to-end testing (initial flow), [x] implement error handling (basic), [ ] write privacy policy, [ ] prepare for deployment.
 
 ## 10. User stories
 
@@ -328,3 +328,103 @@ Alex, keen to refine their professional look, feels lost in the world of color t
   - Submitting the ID queries the backend.
   - If the ID exists, the user is redirected to the corresponding results page (`/analysis/[id]`).
   - If the ID does not exist, an appropriate error message is shown.
+
+## 11. Detailed Technical Flow (Current Implementation)
+
+This section documents the technical flow as implemented and planned, clarifying the roles of different components and data persistence, particularly the use of the `sessions` table for in-progress state and the `analyses` table for final results.
+
+1.  **Session Initiation (`POST /api/v1/sessions`):**
+
+    - Triggered by the user starting a new analysis.
+    - Generates a unique UUID (`sessionId`).
+    - Creates a record in the `sessions` database table (`id`, `status: 'pending_payment'`, `expiresAt`).
+    - Creates a Stripe Checkout Session, embedding the `sessionId` as `client_reference_id`.
+    - Returns the `sessionId` and Stripe `checkoutUrl` to the frontend.
+
+2.  **Payment Confirmation (`POST /api/v1/webhooks/stripe`):**
+
+    - Receives `checkout.session.completed` event from Stripe.
+    - Extracts `sessionId` from `client_reference_id`.
+    - Updates the corresponding `sessions` record:
+      - Sets `status` to `'payment_complete'`.
+      - Stores `paymentIntentId`.
+
+3.  **Selfie Upload Trigger (Frontend):**
+
+    - User is redirected back to the app after payment (e.g., to `/analysis/[sessionId]/upload`).
+    - The `SelfieAnalyzer` component (or similar) handles the upload process.
+
+4.  **Blob Upload & Authorization (`POST /api/v1/blob/upload`):**
+
+    - The frontend uses `@vercel/blob/client`'s `upload` function, passing the `sessionId` in the `handleUploadUrl`.
+    - This triggers a call to this backend route for authorization _before_ generating the upload token.
+    - The route handler verifies:
+      - `sessionId` is provided in the query params.
+      - The corresponding `sessions` record exists.
+      - The session `status` is `'payment_complete'`.
+      - The session has not expired.
+    - If valid, it returns the necessary information for the client library to proceed with the direct upload to Vercel Blob.
+
+5.  **Image Validation (`POST /api/v1/analysis/validate`):**
+
+    - After the client successfully uploads the image to Vercel Blob, it calls this endpoint with the `blobUrl` and `sessionId`.
+    - The route handler calls the `validateSelfieImage` utility (using Google Cloud Vision API) with the `blobUrl`.
+    - **If validation fails:** The blob is deleted, and an error response is returned.
+    - **If validation succeeds:**
+      - The route handler finds the `sessions` record by `sessionId`.
+      - It updates the `sessions` record:
+        - Stores the `blobUrl` in the `uploaded_image_path` (or `image_blob_url`) column.
+        - Sets the `status` to `'awaiting_questionnaire'`.
+      - It returns a success response to the client.
+
+6.  **Questionnaire Flow (Frontend):**
+
+    - Upon receiving success from `/validate`, the frontend redirects the user to the questionnaire page (e.g., `/analysis/[sessionId]/questionnaire`).
+    - A multi-step form gathers user answers.
+
+7.  **Questionnaire Submission (`POST /api/v1/analysis/[sessionId]/questionnaire`):**
+
+    - The frontend submits the collected answers along with the `sessionId`.
+    - The route handler finds the `sessions` record, verifies status is `'awaiting_questionnaire'`.
+    - It updates the `sessions` record:
+      - Stores the answers in the `questionnaire_data` column.
+      - Sets the `status` to `'questionnaire_complete'`.
+    - Returns a success response.
+
+8.  **Analysis Trigger Flow (Frontend -> Backend):**
+
+    - Upon successful questionnaire submission, the frontend redirects to a processing page (e.g., `/analysis/[sessionId]/processing`).
+    - This page triggers `POST /api/v1/analysis/[sessionId]/start`.
+
+9.  **Analysis Pipeline Execution (`POST /api/v1/analysis/[sessionId]/start`):**
+
+    - Finds the `sessions` record, verifies status is `'questionnaire_complete'`.
+    - Updates session status to `'analysis_pending'`.
+    - Retrieves `uploaded_image_path` (or `image_blob_url`) and `questionnaire_data` from the session.
+    - **(Pipeline Steps):**
+      - Downloads the image from the blob URL.
+      - Performs image analysis using `sharp` (color extraction, etc.).
+      - Constructs the prompt for the LLM using `sharp` results and questionnaire data.
+      - Calls the LLM API (via Vercel AI SDK).
+      - Parses and validates the LLM response.
+    - **(On Pipeline Success):**
+      - **Creates a new record** in the `analyses` table, storing the final `result` JSON.
+      - Updates the `sessions` record:
+        - Sets `status` to `'analysis_complete'`.
+        - Links `analysisId` to the ID of the new record in the `analyses` table.
+    - **(On Pipeline Failure):**
+      - Updates the `sessions` record status to `'analysis_failed'`.
+
+10. **Status Check (`GET /api/v1/analysis/[sessionId]/status`):**
+
+    - The processing page polls this endpoint.
+    - The route handler finds the `sessions` record and returns its current `status`.
+    - If `'analysis_complete'`, it also returns the linked `analysisId` (the ID of the record in the `analyses` table).
+
+11. **Result Display (Frontend):**
+
+    - When the status check returns `'analysis_complete'` and the final `analysisId`, the frontend redirects to the results page (e.g., `/analysis/[analysisId]`).
+    - This page fetches the analysis data directly from the `analyses` table using the final `analysisId`.
+
+12. **Data Cleanup:**
+    - Temporary data (image blob, `uploaded_image_path`/`image_blob_url`, `questionnaire_data` in `sessions` table) should be cleared/deleted after analysis completion or session expiry to maintain privacy and storage efficiency. This could be done at the end of the `/start` endpoint or via a separate process.

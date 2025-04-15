@@ -1,14 +1,13 @@
 "use client";
 
-import * as React from "react";
-import { useState } from "react";
+import { useState, ChangeEvent } from "react";
 import { upload } from "@vercel/blob/client";
-
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { UploadProgressEvent } from "@vercel/blob";
+import type { UploadProgressEvent } from "@vercel/blob";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface SelfieAnalyzerProps {
   sessionId: string;
@@ -20,31 +19,30 @@ type Status =
   | "selecting"
   | "uploading"
   | "validating"
-  | "analyzing"
+  | "redirecting"
   | "success"
   | "error";
 
 export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [analysisResult, setAnalysisResult] = useState<unknown | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setStatus("selecting");
-      setErrorMessage(null);
-      setAnalysisResult(null);
-      setUploadProgress(0);
-      console.log("File selected:", selectedFile.name);
+  const router = useRouter();
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file) {
+        setFile(file);
+        setStatus("selecting");
+        setErrorMessage(null);
+      }
     } else {
       setFile(null);
       setStatus("idle");
-      console.log("File selection cancelled.");
     }
   };
 
@@ -57,7 +55,6 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
 
     setStatus("uploading");
     setErrorMessage(null);
-    setAnalysisResult(null);
     let blobResult = null;
 
     console.log(`Starting upload process for session: ${sessionId}`);
@@ -102,32 +99,13 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
         );
       }
 
-      console.log("Validation successful.");
+      console.log("Validation successful. Redirecting to questionnaire...");
+      setStatus("redirecting");
+      toast.success("Selfie accepted! Moving to questionnaire...");
 
-      // 3. Trigger Analysis
-      setStatus("analyzing");
-      console.log("Sending request to /api/v1/analysis/analyze");
-      const analyzeResponse = await fetch("/api/v1/analysis/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blobUrl: blobResult.url, sessionId }),
-      });
-
-      const analyzeData = await analyzeResponse.json();
-      console.log("Analysis response:", analyzeData);
-
-      if (!analyzeResponse.ok || !analyzeData.success) {
-        throw new Error(
-          analyzeData.message || "Analysis could not be initiated."
-        );
-      }
-
-      setAnalysisResult(analyzeData.analysisResult);
-      setStatus("success");
-      console.log("Analysis process initiated successfully.");
-      toast.success("Analysis started!");
+      router.push(`/analysis/session/${sessionId}/questionnaire`);
     } catch (error: unknown) {
-      console.error("Error during analysis process:", error);
+      console.error("Error during selfie processing:", error);
       const message =
         error instanceof Error
           ? error.message
@@ -153,7 +131,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
     }
   };
 
-  const isLoading = ["uploading", "validating", "analyzing"].includes(status);
+  const isLoading = ["uploading", "validating", "redirecting"].includes(status);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -178,21 +156,14 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
             ? `Uploading (${uploadProgress.toFixed(0)}%)...`
             : status === "validating"
             ? "Validating..."
-            : status === "analyzing"
-            ? "Analyzing..."
+            : status === "redirecting"
+            ? "Redirecting..."
             : "Processing..."
-          : "Analyze Selfie"}
+          : "Upload Selfie"}
       </Button>
-      {status === "success" && (
-        <p className="text-green-600">
-          Analysis started successfully! Results will be available soon.
-        </p>
-      )}
       {status === "error" && errorMessage && (
         <p className="text-red-600">Error: {errorMessage}</p>
       )}
-      {/* Placeholder for displaying analysis results later */}
-      {/* {analysisResult && ( ...display results... )} */}
     </div>
   );
 }

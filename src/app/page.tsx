@@ -3,8 +3,6 @@
 import { useState } from "react";
 
 export default function Home() {
-  // No longer need productId here, it's configured server-side via STRIPE_PRICE_ID
-  // const productId = "4980fdb8-390b-4afb-8029-2959102b89e8";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -25,6 +25,7 @@ export const sessionStatusEnum = pgEnum("session_status", [
   "awaiting_selfie",
   "selfie_validation_failed",
   "awaiting_questionnaire",
+  "questionnaire_complete",
   "analysis_pending",
   "analysis_failed",
   "analysis_complete",
