@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UploadProgressEvent } from "@vercel/blob";
-// import { UploadProgressEvent } from "@vercel/blob";
-// import { useToast } from "@/components/ui/use-toast"; // Optional: for toast notifications
+import { toast } from "sonner";
 
 interface SelfieAnalyzerProps {
   sessionId: string;
@@ -32,7 +31,6 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [analysisResult, setAnalysisResult] = useState<unknown | null>(null);
-  // const { toast } = useToast(); // Optional
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -53,7 +51,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
   const handleSubmit = async () => {
     if (!file) {
       setErrorMessage("Please select a file first.");
-      // toast({ variant: "destructive", title: "Error", description: "Please select a file first." });
+      toast.error("Please select a file first.");
       return;
     }
 
@@ -62,7 +60,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
     setAnalysisResult(null);
     let blobResult = null;
 
-    console.log(`Starting upload process for session: ${sessionId}`); // Use sessionId from props
+    console.log(`Starting upload process for session: ${sessionId}`);
 
     try {
       // 1. Upload to Vercel Blob
@@ -124,10 +122,10 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
         );
       }
 
-      setAnalysisResult(analyzeData.analysisResult); // Store the placeholder result for now
+      setAnalysisResult(analyzeData.analysisResult);
       setStatus("success");
       console.log("Analysis process initiated successfully.");
-      // toast({ title: "Success", description: "Analysis started!" });
+      toast.success("Analysis started!");
     } catch (error: unknown) {
       console.error("Error during analysis process:", error);
       const message =
@@ -136,18 +134,17 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
           : "An unexpected error occurred.";
       setErrorMessage(message);
       setStatus("error");
-      // toast({ variant: "destructive", title: "Error", description: message });
+      toast.error(message);
 
       if (status !== "uploading" && blobResult?.url) {
         console.log(
           `Attempting to delete blob due to subsequent error: ${blobResult.url}`
         );
         try {
-          // Fire-and-forget deletion request. We don't strictly need to wait.
           fetch("/api/v1/blob/delete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ blobUrl: blobResult.url, sessionId }), // Include sessionId
+            body: JSON.stringify({ blobUrl: blobResult.url, sessionId }),
           });
         } catch (deleteError) {
           console.error("Failed to send delete request for blob:", deleteError);

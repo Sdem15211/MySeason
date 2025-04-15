@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ImageAnnotatorClient, protos } from "@google-cloud/vision";
 import { del } from "@vercel/blob";
-
-// Initialize Vision client (outside handler for reuse)
-const visionClient = new ImageAnnotatorClient();
-
-// Define likelihood thresholds (adjust as needed)
-// See: https://cloud.google.com/vision/docs/reference/rest/v1/Likelihood
-const LIKELIHOOD_THRESHOLD: protos.google.cloud.vision.v1.Likelihood[] = [4, 5];
-const DETECTION_CONFIDENCE_THRESHOLD = 0.75; // Minimum confidence for face detection
+import { validateSelfieImage } from "@/lib/vision";
 
 export async function POST(request: NextRequest) {
   console.log("Received POST request to /api/v1/analysis/validate");
-  let blobUrlToDelete: string | null = null; // Keep track of URL for potential deletion
+  let blobUrlToDelete: string | null = null;
 
   try {
     const { blobUrl, sessionId } = await request.json();
-    blobUrlToDelete = blobUrl; // Store for potential cleanup
 
     if (!blobUrl || typeof blobUrl !== "string") {
-      blobUrlToDelete = null; // Don't delete if URL was invalid
       return NextResponse.json(
         {
           success: false,
@@ -29,10 +19,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    blobUrlToDelete = blobUrl;
 
     if (!sessionId || typeof sessionId !== "string") {
-      // Although sessionId might not be directly used for validation itself,
-      // it's crucial for linking the analysis and potential cleanup.
       return NextResponse.json(
         {
           success: false,
@@ -44,156 +33,61 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `Validating image for session: ${sessionId}, Blob URL: ${blobUrl}`
+      `Calling validation utility for session: ${sessionId}, Blob URL: ${blobUrl}`
     );
 
-    // --- Implement Google Cloud Vision API call ---
-    const [result] = await visionClient.annotateImage({
-      image: { source: { imageUri: blobUrl } },
-      features: [{ type: "FACE_DETECTION" }], // Ensure we request face detection features
-    });
+    const validationResult = await validateSelfieImage(blobUrl);
 
-    const faces = result.faceAnnotations;
-
-    if (!faces || faces.length === 0) {
-      console.log(`Validation failed: No face detected for ${blobUrl}`);
-      await del(blobUrl);
-      blobUrlToDelete = null; // Mark as deleted
-      return NextResponse.json(
-        {
-          success: false,
-          error: "NO_FACE_DETECTED",
-          message: "No face was detected in the image.",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (faces.length > 1) {
-      console.log(`Validation failed: Multiple faces detected for ${blobUrl}`);
-      await del(blobUrl);
-      blobUrlToDelete = null;
-      return NextResponse.json(
-        {
-          success: false,
-          error: "MULTIPLE_FACES_DETECTED",
-          message:
-            "More than one face was detected. Please upload a photo with only your face.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const face = faces[0]; // We've established there's exactly one face
-
-    if (!face) {
-      console.error(
-        `Validation logic error: Face annotation unexpectedly undefined for ${blobUrlToDelete}`
-      );
-      if (blobUrlToDelete) {
-        await del(blobUrlToDelete);
-      }
-      return NextResponse.json(
-        {
-          success: false,
-          error: "VALIDATION_LOGIC_ERROR",
-          message: "Internal error during face validation.",
-        },
-        { status: 500 }
-      );
-    }
-
-    // 1. Check Detection Confidence
-    if (
-      face.detectionConfidence != null &&
-      face.detectionConfidence < DETECTION_CONFIDENCE_THRESHOLD
-    ) {
+    if (!validationResult.success) {
       console.log(
-        `Validation failed: Low detection confidence (${face.detectionConfidence}) for ${blobUrl}`
+        `Validation failed for ${blobUrl}: ${validationResult.error} - ${validationResult.message}`
       );
       await del(blobUrl);
       blobUrlToDelete = null;
+
+      const status =
+        validationResult.error === "VISION_API_ERROR" ||
+        validationResult.error === "VALIDATION_LOGIC_ERROR"
+          ? 500
+          : 400;
+
       return NextResponse.json(
         {
           success: false,
-          error: "LOW_DETECTION_CONFIDENCE",
-          message: "Could not confidently detect a face. Try a clearer photo.",
+          error: validationResult.error,
+          message: validationResult.message,
         },
-        { status: 400 }
+        { status }
       );
     }
-
-    // 2. Check for Blurriness
-    if (
-      face.blurredLikelihood != null &&
-      face.blurredLikelihood !== "UNKNOWN" &&
-      LIKELIHOOD_THRESHOLD.includes(face.blurredLikelihood as number)
-    ) {
-      console.log(
-        `Validation failed: Image likely blurry (${face.blurredLikelihood}) for ${blobUrl}`
-      );
-      await del(blobUrl);
-      blobUrlToDelete = null;
-      return NextResponse.json(
-        {
-          success: false,
-          error: "IMAGE_TOO_BLURRY",
-          message: "The image appears to be too blurry.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // 3. Check for Under Exposure
-    if (
-      face.underExposedLikelihood != null &&
-      face.underExposedLikelihood !== "UNKNOWN" &&
-      LIKELIHOOD_THRESHOLD.includes(face.underExposedLikelihood as number)
-    ) {
-      console.log(
-        `Validation failed: Image likely underexposed (${face.underExposedLikelihood}) for ${blobUrl}`
-      );
-      await del(blobUrl);
-      blobUrlToDelete = null;
-      return NextResponse.json(
-        {
-          success: false,
-          error: "IMAGE_UNDEREXPOSED",
-          message: "The image appears to be too dark.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // TODO: Extract specific landmarks if needed for later steps.
-    // For now, we just confirm validation passed.
-    const landmarks = face.landmarks; // face is guaranteed to be defined here
 
     console.log(
       `Validation successful for session: ${sessionId}, Blob URL: ${blobUrl}`
     );
-    blobUrlToDelete = null; // Validation succeeded, don't delete the blob
+    blobUrlToDelete = null;
 
     return NextResponse.json(
-      { success: true, message: "Image validated successfully.", landmarks }, // Return landmarks or other relevant data
+      {
+        success: true,
+        message: "Image validated successfully.",
+        landmarks: validationResult.landmarks,
+      },
       { status: 200 }
     );
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
-        : "Unknown error during validation";
+        : "Unknown error in validation route";
     console.error(
-      `Error during image validation for ${blobUrlToDelete}:`,
+      `Error in validation route handler for ${blobUrlToDelete}:`,
       error
     );
 
-    // Attempt to delete the blob if an error occurred *after* getting the URL
-    // and the blob wasn't already deleted due to a validation failure.
     if (blobUrlToDelete) {
       try {
         console.log(
-          `Attempting to delete blob due to error: ${blobUrlToDelete}`
+          `Attempting to delete blob ${blobUrlToDelete} due to route handler error`
         );
         await del(blobUrlToDelete);
       } catch (deleteError) {
@@ -205,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: "VALIDATION_API_ERROR", message },
+      { success: false, error: "VALIDATION_ROUTE_ERROR", message },
       { status: 500 }
     );
   }

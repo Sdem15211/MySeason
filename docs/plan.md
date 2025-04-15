@@ -55,16 +55,16 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
     - [x] Securely validate webhook signature.
     - [x] Update internal session state upon successful payment.
     - [x] Handle payment failures/cancellations.
-- [ ] **Selfie Upload & Validation**
-  - [ ] API endpoint to receive uploaded selfie image.
-    - [ ] Implement secure temporary storage for the uploaded image linked to the session ID/payment ID.
-    - [ ] Validate image file type and size.
-  - [ ] Integrate Google Cloud Vision API (`FACE_DETECTION`).
-    - [ ] Call Vision API with the uploaded image.
-    - [ ] Process response to check face count (exactly 1).
-    - [ ] Validate `detectionConfidence`, `landmarkingConfidence`, `underExposedLikelihood`, `blurredLikelihood` against defined thresholds.
-    - [ ] Return structured validation result (success/failure with specific reasons) and landmarks if successful.
-    - [ ] Implement logic to delete temporary image if validation fails.
+- [x] **Selfie Upload & Validation**
+  - [x] API endpoint to receive uploaded selfie image.
+    - [x] Implement secure temporary storage for the uploaded image linked to the session ID/payment ID.
+    - [x] Validate image file type and size.
+  - [x] Integrate Google Cloud Vision API (`FACE_DETECTION`).
+    - [x] Call Vision API with the uploaded image.
+    - [x] Process response to check face count (exactly 1).
+    - [x] Validate `detectionConfidence`, `landmarkingConfidence`, `underExposedLikelihood`, `blurredLikelihood` against defined thresholds.
+    - [x] Return structured validation result (success/failure with specific reasons) and landmarks if successful.
+    - [x] Implement logic to delete temporary image if validation fails.
 - [ ] **Questionnaire Handling**
   - [ ] API endpoint to receive questionnaire answers.
   - [ ] Implement secure temporary storage for answers linked to the session ID.
