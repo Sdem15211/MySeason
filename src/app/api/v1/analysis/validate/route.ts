@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
 
     // --- Implement Google Cloud Vision API call ---
-    const [result] = await visionClient.faceDetection({
+    const [result] = await visionClient.annotateImage({
       image: { source: { imageUri: blobUrl } },
       features: [{ type: "FACE_DETECTION" }], // Ensure we request face detection features
     });
