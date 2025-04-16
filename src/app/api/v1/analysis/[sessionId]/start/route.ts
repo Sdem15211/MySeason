@@ -2,17 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { sessions, analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { generateUUID } from "@/lib/utils"; // Use crypto for UUID generation
-
-// --- Placeholder Imports & Types (Replace with actual implementations) ---
-import { AnalysisResult, generateAnalysis } from "@/lib/ai"; // Assume this exists and works
-// import { downloadImage, extractColors } from '@/lib/image-processing'; // Assume these exist
-type ExtractedColors = {
-  eyeColor: string;
-  hairColor: string;
-  skinColor: string;
-}; // Placeholder
-// -------------------------------------------------------------------------
+import { generateUUID } from "@/lib/utils";
+import { AnalysisResult, generateAnalysis } from "@/lib/ai";
+import {
+  extractSkinAndEyeColors,
+  StoredLandmarks,
+  ExtractedColors,
+} from "@/lib/image-analysis";
+// import { del } from '@vercel/blob'; // Uncomment if cleanup needed
 
 interface RouteParams {
   params: {
@@ -42,7 +39,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select({
         id: sessions.id,
         status: sessions.status,
-        uploadedImagePath: sessions.uploadedImagePath,
+        imageBlobUrl: sessions.imageBlobUrl,
+        faceLandmarks: sessions.faceLandmarks,
         questionnaireData: sessions.questionnaireData,
         expiresAt: sessions.expiresAt,
       })
@@ -63,6 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Check expiry
     if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
       console.log(`Start analysis: Session ${sessionId} has expired.`);
+      // Consider updating status to 'expired' here?
       return NextResponse.json(
         { success: false, error: "SESSION_EXPIRED" },
         { status: 410 }
@@ -80,16 +79,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error: "INVALID_SESSION_STATE",
           message: `Session status is ${session.status}`,
         },
-        { status: 409 } // Conflict
+        { status: 409 }
       );
     }
 
     // Check for required data
-    if (!session.uploadedImagePath) {
+    if (!session.imageBlobUrl) {
       console.error(
-        `Start analysis: Missing uploadedImagePath for session ${sessionId}`
+        `Start analysis: Missing imageBlobUrl for session ${sessionId}`
       );
-      throw new Error("Session is missing the uploaded image path.");
+      throw new Error("Session is missing the image blob URL.");
+    }
+    if (!session.faceLandmarks) {
+      console.error(
+        `Start analysis: Missing faceLandmarks for session ${sessionId}`
+      );
+      throw new Error("Session is missing face landmark data.");
     }
     if (!session.questionnaireData) {
       console.error(
@@ -99,56 +104,57 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // --- 2. Update Status to Pending/Running ---
-    // Using 'analysis_pending' initially
     await db
       .update(sessions)
       .set({ status: "analysis_pending", updatedAt: new Date() })
       .where(eq(sessions.id, sessionId));
-
     console.log(`Session ${sessionId} status updated to analysis_pending.`);
 
-    // --- 3. Perform Analysis (Simulated) ---
-    // In a real scenario, this section would be more robust and potentially asynchronous
-    // or trigger a background job.
-
+    // --- 3. Perform Analysis ---
     let analysisResult: AnalysisResult | null = null;
     let finalAnalysisId: string | null = null;
 
     try {
+      console.log(`Starting analysis pipeline for session ${sessionId}...`);
+
+      // --- 3a. Download Image ---
+      console.log(`   - Downloading image from: ${session.imageBlobUrl}`);
+      const imageResponse = await fetch(session.imageBlobUrl);
+      if (!imageResponse.ok) {
+        throw new Error(
+          `Failed to download image: ${imageResponse.statusText}`
+        );
+      }
+      const imageArrayBuffer = await imageResponse.arrayBuffer();
+      const imageBuffer = Buffer.from(imageArrayBuffer);
+      console.log(`   - Image downloaded successfully.`);
+
+      // --- 3b. Image Processing (Color Extraction) ---
+      const landmarks = session.faceLandmarks as StoredLandmarks;
+      const extractedColors: ExtractedColors = await extractSkinAndEyeColors(
+        imageBuffer,
+        landmarks
+      );
       console.log(
-        `Starting simulated analysis pipeline for session ${sessionId}...`
+        `   - Extracted colors for session ${sessionId}:`,
+        extractedColors
       );
 
-      // --- 3a. Image Processing (Placeholder) ---
-      console.log(
-        `   - Simulating image download/processing for: ${session.uploadedImagePath}`
-      );
-      // const imageBuffer = await downloadImage(session.uploadedImagePath);
-      // const extractedColors: ExtractedColors = await extractColors(imageBuffer);
-      const extractedColors: ExtractedColors = {
-        eyeColor: "#aabbcc",
-        hairColor: "#112233",
-        skinColor: "#eeddcc",
-      }; // Dummy data
-      console.log(`   - Simulated extracted colors:`, extractedColors);
-
-      // --- 3b. LLM Analysis (Placeholder) ---
-      console.log(`   - Simulating LLM analysis...`);
+      // --- 3c. LLM Analysis ---
+      console.log(`   - Calling LLM analysis...`);
       analysisResult = await generateAnalysis({
-        // TODO: Define AnalysisInput type properly
-        extractedColors: extractedColors, // Pass simulated colors
+        extractedColors: extractedColors, // Pass actual extracted colors
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        questionnaireAnswers: session.questionnaireData as any, // Cast for now
+        questionnaireAnswers: session.questionnaireData as any,
       });
-      console.log(`   - Simulated LLM analysis complete.`);
+      console.log(`   - LLM analysis complete.`);
 
-      // --- 3c. Store Result in 'analyses' Table ---
+      // --- 3d. Store Result in 'analyses' Table ---
       console.log(`   - Storing analysis result in database...`);
       const newAnalysisId = generateUUID();
       await db.insert(analyses).values({
         id: newAnalysisId,
-        result: analysisResult, // Store the validated JSON result
-        // createdAt/updatedAt have defaults
+        result: analysisResult,
       });
       finalAnalysisId = newAnalysisId;
       console.log(`   - Analysis result stored with ID: ${finalAnalysisId}`);
@@ -160,15 +166,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           status: "analysis_complete",
           analysisId: finalAnalysisId,
           updatedAt: new Date(),
+          // Optionally clear temporary data here
+          // faceLandmarks: null,
+          // questionnaireData: null,
         })
         .where(eq(sessions.id, sessionId));
-
       console.log(`Session ${sessionId} status updated to analysis_complete.`);
 
       // --- 5. Cleanup (Optional - Placeholder) ---
-      // console.log(`   - Simulating cleanup of blob: ${session.uploadedImagePath}`);
-      // await del(session.uploadedImagePath); // Requires import { del } from '@vercel/blob';
-      // Consider nullifying questionnaireData/uploadedImagePath in sessions table too?
+      // console.log(`   - Deleting blob: ${session.imageBlobUrl}`);
+      // await del(session.imageBlobUrl); // Requires import { del } from '@vercel/blob';
+      // If clearing data in step 4, no need to update again here.
     } catch (pipelineError) {
       console.error(
         `Analysis pipeline failed for session ${sessionId}:`,
@@ -181,17 +189,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .where(eq(sessions.id, sessionId));
       console.log(`Session ${sessionId} status updated to analysis_failed.`);
 
-      // Re-throw or handle the error appropriately for the final response
-      throw pipelineError; // Let the outer catch block handle the response
+      throw pipelineError;
     }
 
     // --- 6. Return Success Response ---
-    // The client polls /status, so this endpoint just needs to confirm it started.
-    // We return success immediately after updating status to pending.
-    // The actual result is handled via polling.
-    // However, since this is currently synchronous simulation, we wait for the whole thing.
+    // Since the client polls /status, this endpoint could technically return success
+    // right after setting status to 'analysis_pending'.
+    // However, the current implementation waits for the synchronous pipeline.
+    // Returning the analysisId here might be redundant if polling is working,
+    // but useful for direct feedback if polling isn't implemented or fails.
     return NextResponse.json(
-      { success: true, analysisId: finalAnalysisId },
+      { success: true, analysisId: finalAnalysisId }, // analysisId might be null if pipeline failed before storing
       { status: 200 }
     );
   } catch (error) {
@@ -200,6 +208,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       error
     );
     // Ensure session status is marked as failed if not already handled
+    // (This check might be redundant if the inner try/catch always updates on failure)
     if (session && session.status !== "analysis_failed") {
       try {
         await db

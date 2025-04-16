@@ -36,7 +36,7 @@ export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 
 // Placeholder interface for input data, to be refined later.
 interface AnalysisInput {
-  extractedColors: Record<string, string>; // e.g., { eyeColor: '#...', cheekColor: '#...' }
+  extractedColors: Record<string, string | null>; // e.g., { eyeColor: '#...', cheekColor: '#...' }
   questionnaireAnswers: Record<string, string | number | boolean>; // Adjust type based on actual answers
 }
 

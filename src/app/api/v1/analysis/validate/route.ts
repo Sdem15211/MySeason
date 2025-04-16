@@ -125,7 +125,8 @@ export async function POST(request: NextRequest) {
         .update(sessions)
         .set({
           status: "awaiting_questionnaire",
-          uploadedImagePath: blobUrl,
+          imageBlobUrl: blobUrl,
+          faceLandmarks: validationResult.landmarks,
           updatedAt: new Date(),
         })
         .where(eq(sessions.id, sessionId));
@@ -140,6 +141,8 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           message: "Image validated and session updated.",
+          // Optionally return landmarks if needed by frontend, but not strictly necessary
+          // landmarks: validationResult.landmarks
         },
         { status: 200 }
       );
