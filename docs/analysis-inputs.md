@@ -68,6 +68,6 @@ These inputs are collected directly from the user to provide context that cannot
 
 ## TODO
 
-- [ ] refine skinUndertone thresholding
+- [x] refine skinUndertone thresholding
 - [ ] Add color swatch palette for hair color in questionnaire
 - [ ] Use more skin regions for skin color extraction

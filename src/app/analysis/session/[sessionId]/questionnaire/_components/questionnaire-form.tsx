@@ -15,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -38,6 +37,9 @@ import {
   questionnaireSchema,
   type QuestionnaireFormData,
 } from "@/lib/schemas/questionnaire";
+// Import hair colors
+import { groupedHairColors } from "@/lib/constants/hair-colors";
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
 interface QuestionnaireFormProps {
   sessionId: string;
@@ -276,22 +278,65 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                   control={form.control}
                   name="naturalHairColor"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>What is your natural hair color?</FormLabel>
+                    <FormItem className="space-y-3">
+                      <FormLabel>
+                        What is your <strong>natural</strong> hair color?{" "}
+                        <span className="text-xs text-muted-foreground">
+                          (Select the closest match)
+                        </span>
+                      </FormLabel>
                       <FormControl>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="color"
-                            className="p-1 h-10 w-14 block bg-white border border-gray-200 cursor-pointer rounded-lg disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700"
-                            {...field}
-                          />
-                          <Input
-                            type="text"
-                            placeholder="#000000"
-                            maxLength={7}
-                            {...field}
-                          />
-                        </div>
+                        {/* Use RadioGroup for single selection */}
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value} // Use value instead of defaultValue here
+                          className="space-y-4"
+                        >
+                          {/* Map through grouped colors */}
+                          {Object.entries(groupedHairColors).map(
+                            ([category, colors]) => (
+                              <div key={category}>
+                                <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+                                  {category}
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Map through colors in the category */}
+                                  {colors.map((color) => (
+                                    <FormItem
+                                      key={color.hex}
+                                      className="flex items-center space-x-0 space-y-0" // Reset default FormItem spacing
+                                    >
+                                      <FormControl>
+                                        {/* Each item is a radio button */}
+                                        <RadioGroupItem
+                                          value={color.hex}
+                                          id={color.hex} // Unique ID for label association
+                                          className="sr-only peer" // Hide default radio visually, keep for accessibility
+                                        />
+                                      </FormControl>
+                                      {/* Custom visual swatch using Label */}
+                                      <FormLabel
+                                        htmlFor={color.hex} // Associate label with the hidden radio input
+                                        className={cn(
+                                          "h-10 w-10 rounded-full border-2 border-transparent cursor-pointer transition-all",
+                                          "flex items-center justify-center", // For potential future icons/checkmarks
+                                          "hover:border-primary/50", // Hover effect
+                                          "peer-data-[state=checked]:border-primary peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary/30" // Selected state
+                                        )}
+                                        style={{ backgroundColor: color.hex }}
+                                        title={color.name} // Tooltip on hover
+                                        aria-label={color.name} // Accessibility label
+                                      >
+                                        {/* Optional: Add a checkmark icon when selected */}
+                                        {/* {field.value === color.hex && <CheckIcon className="h-5 w-5 text-white mix-blend-difference" />} */}
+                                      </FormLabel>
+                                    </FormItem>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
