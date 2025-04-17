@@ -10,6 +10,7 @@ import {
 export const analyses = pgTable("analyses", {
   id: uuid("id").primaryKey().defaultRandom(),
   result: jsonb("result").notNull(),
+  inputData: jsonb("input_data").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -25,13 +25,35 @@ export async function generateMetadata({
 }
 
 // Helper component for rendering color swatches (placeholder)
-const ColorSwatch = ({ color }: { color: string }) => (
-  <div
-    className="w-10 h-10 rounded mr-2 mb-2 border border-muted inline-block align-middle"
-    style={{ backgroundColor: color }}
-    title={color}
-  />
+const ColorSwatch = ({ color, label }: { color: string; label?: string }) => (
+  <div className="inline-flex items-center mr-4 mb-2">
+    <div
+      className="w-8 h-8 rounded border border-muted mr-2 align-middle"
+      style={{ backgroundColor: color }}
+      title={color}
+    />
+    {label && <span className="text-sm text-muted-foreground">{label}</span>}
+  </div>
 );
+
+interface StoredInputData {
+  extractedFeatures: {
+    averageEyeColorHex?: string;
+    skinColorHex?: string;
+    averageEyebrowColorHex?: string;
+    skinUndertone?: string;
+    contrast?: {
+      skinEyeRatio?: number;
+      skinHairRatio?: number;
+      eyeHairRatio?: number;
+      overall?: string;
+    };
+  };
+  questionnaireData: {
+    naturalHairColor?: string;
+    // Add other questionnaire fields as needed
+  };
+}
 
 export default async function AnalysisResultsPage({
   params,
@@ -43,22 +65,31 @@ export default async function AnalysisResultsPage({
     notFound();
   }
 
-  let analysisData;
+  let analysisRecord;
   try {
-    const results = await db
+    // Fetch analysis result AND input data
+    const analysisResults = await db
       .select({
         id: analyses.id,
         result: analyses.result,
+        inputData: analyses.inputData,
         createdAt: analyses.createdAt,
       })
       .from(analyses)
       .where(eq(analyses.id, analysisId))
       .limit(1);
 
-    analysisData = results[0];
+    analysisRecord = analysisResults[0];
+
+    if (!analysisRecord) {
+      console.log(
+        `AnalysisResultsPage: Analysis not found for ID: ${analysisId}`
+      );
+      notFound();
+    }
   } catch (error) {
     console.error(
-      `AnalysisResultsPage: Database error fetching analysis ${analysisId}:`,
+      `AnalysisResultsPage: Database error fetching data for analysis ${analysisId}:`,
       error
     );
     // Render an error message or use an Error component
@@ -69,16 +100,20 @@ export default async function AnalysisResultsPage({
     );
   }
 
-  if (!analysisData || !analysisData.result) {
+  if (!analysisRecord?.result || !analysisRecord?.inputData) {
     console.log(
-      `AnalysisResultsPage: Analysis not found for ID: ${analysisId}`
+      `AnalysisResultsPage: Analysis result or input data missing for ID: ${analysisId}`
     );
     notFound();
   }
 
-  // Type assertion - Ensure the result matches the expected schema
-  // Add runtime validation (e.g., Zod) here for robustness if needed
-  const result = analysisData.result as AnalysisResult;
+  // Type assertion for result
+  const result = analysisRecord.result as AnalysisResult;
+
+  // Type assertion/parsing for input data (add Zod validation for robustness)
+  const inputData = analysisRecord.inputData as StoredInputData;
+  const extractedFeatures = inputData.extractedFeatures ?? {};
+  const questionnaireData = inputData.questionnaireData ?? {};
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
@@ -86,8 +121,8 @@ export default async function AnalysisResultsPage({
         Your Personal Color Analysis
       </h1>
       <p className="text-center text-muted-foreground mb-8">
-        Analysis ID: {analysisData.id}{" "}
-        <CopyButton textToCopy={analysisData.id} />
+        Analysis ID: {analysisRecord.id}{" "}
+        <CopyButton textToCopy={analysisRecord.id} />
       </p>
 
       {/* Season Result */}
@@ -126,6 +161,89 @@ export default async function AnalysisResultsPage({
         </CardContent>
       </Card>
 
+      {/* Input Data (Debug Section) */}
+      <Card className="mb-6 border-dashed border-amber-500">
+        <CardHeader>
+          <CardTitle className="text-amber-600">Input Data (Debug)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-2 text-muted-foreground">
+              Extracted Features
+            </h3>
+            {extractedFeatures?.skinColorHex ? (
+              <ColorSwatch
+                color={extractedFeatures.skinColorHex}
+                label="Skin"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Skin Color: Not Available
+              </p>
+            )}
+            {extractedFeatures?.averageEyeColorHex ? (
+              <ColorSwatch
+                color={extractedFeatures.averageEyeColorHex}
+                label="Eye"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Eye Color: Not Available
+              </p>
+            )}
+            {extractedFeatures?.averageEyebrowColorHex ? (
+              <ColorSwatch
+                color={extractedFeatures.averageEyebrowColorHex}
+                label="Eyebrow"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Eyebrow Color: Not Available
+              </p>
+            )}
+            {extractedFeatures?.skinUndertone ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Undertone: {extractedFeatures.skinUndertone}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-2">
+                Undertone: Not Available
+              </p>
+            )}
+            {/* Display Contrast Ratios if available */}
+            {extractedFeatures?.contrast && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Contrast (Skin/Eye:{" "}
+                {extractedFeatures.contrast.skinEyeRatio?.toFixed(2) ?? "N/A"},
+                Skin/Hair:{" "}
+                {extractedFeatures.contrast.skinHairRatio?.toFixed(2) ?? "N/A"},
+                Eye/Hair:{" "}
+                {extractedFeatures.contrast.eyeHairRatio?.toFixed(2) ?? "N/A"},
+                Overall: {extractedFeatures.contrast.overall ?? "N/A"})
+              </div>
+            )}
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-2 text-muted-foreground">
+              Questionnaire Data
+            </h3>
+            {questionnaireData?.naturalHairColor ? (
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Natural Hair Color:{" "}
+                </p>
+                <ColorSwatch color={questionnaireData.naturalHairColor} />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Natural Hair Color: Not Provided
+              </p>
+            )}
+            {/* Add other questionnaire fields here if needed */}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Detailed Advice */}
       <Card>
         <CardHeader>
@@ -146,7 +264,7 @@ export default async function AnalysisResultsPage({
       </Card>
 
       <p className="mt-10 text-sm text-center text-muted-foreground">
-        Remember to save your Analysis ID ({analysisData.id}) or bookmark this
+        Remember to save your Analysis ID ({analysisRecord.id}) or bookmark this
         page!
       </p>
     </div>

@@ -32,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 
 // Import shared schema and type
 import {
@@ -44,22 +43,45 @@ interface QuestionnaireFormProps {
   sessionId: string;
 }
 
+// Placeholder color palettes
+const colorPalettes = [
+  "Green",
+  "Brown",
+  "Red",
+  "Blue",
+  "Grey",
+  "Yellow",
+  "Orange",
+  "Purple",
+  "Pink",
+  "Black",
+  "White",
+];
+
 // --- Define Steps ---
 const steps = [
   {
     id: "step1",
-    title: "Basic Information",
-    fields: ["gender", "ageGroup"], // Group gender and age
+    title: "Basic Info",
+    fields: ["makeupUsage", "ageGroup"] as (keyof QuestionnaireFormData)[],
   },
   {
     id: "step2",
-    title: "Personality & Preferences",
-    fields: ["personality", "placeholderInfo1"], // Group personality and placeholder 1
+    title: "Hair & Undertone",
+    fields: [
+      "naturalHairColor",
+      "skinReactionToSun",
+      "veinColor",
+      "jewelryPreference",
+    ] as (keyof QuestionnaireFormData)[],
   },
   {
     id: "step3",
-    title: "Additional Details",
-    fields: ["placeholderInfo2", "placeholderInfo3"], // Group placeholders 2 and 3
+    title: "Color Preferences",
+    fields: [
+      "flatteringColors",
+      "unflatteringColors",
+    ] as (keyof QuestionnaireFormData)[],
   },
 ];
 
@@ -73,12 +95,14 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
     resolver: zodResolver(questionnaireSchema),
     // Update default values
     defaultValues: {
-      gender: undefined,
+      makeupUsage: undefined,
       ageGroup: undefined,
-      personality: undefined,
-      placeholderInfo1: "",
-      placeholderInfo2: "",
-      placeholderInfo3: false,
+      naturalHairColor: "",
+      skinReactionToSun: undefined,
+      veinColor: undefined,
+      jewelryPreference: undefined,
+      flatteringColors: "",
+      unflatteringColors: "",
     },
   });
 
@@ -114,14 +138,12 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
   };
 
   const onSubmit: SubmitHandler<QuestionnaireFormData> = async (data) => {
-    // Remove optional fields if they are undefined or empty before submitting
+    // Remove optional color preference fields if empty before submitting
     const submissionData: Partial<QuestionnaireFormData> = { ...data };
-    if (!submissionData.placeholderInfo1)
-      delete submissionData.placeholderInfo1;
-    if (!submissionData.placeholderInfo2)
-      delete submissionData.placeholderInfo2;
-    if (submissionData.placeholderInfo3 === false)
-      delete submissionData.placeholderInfo3;
+    if (!submissionData.flatteringColors)
+      delete submissionData.flatteringColors;
+    if (!submissionData.unflatteringColors)
+      delete submissionData.unflatteringColors;
 
     console.log("Submitting questionnaire data:", submissionData);
     setIsLoading(true);
@@ -176,37 +198,37 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
             {/* Render fields based on current step */}
             {currentStep === 0 && (
               <>
-                {/* Gender Field */}
+                {/* Makeup Usage */}
                 <FormField
                   control={form.control}
-                  name="gender"
+                  name="makeupUsage"
                   render={({ field }) => (
                     <FormItem className="space-y-3">
-                      <FormLabel>What is your gender?</FormLabel>
+                      <FormLabel>Do you use makeup?</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
                           defaultValue={field.value}
                           className="flex flex-col space-y-1"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="man" />
+                              <RadioGroupItem value="yes" />
                             </FormControl>
-                            <FormLabel className="font-normal">Man</FormLabel>
+                            <FormLabel className="font-normal">Yes</FormLabel>
                           </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="woman" />
+                              <RadioGroupItem value="no" />
                             </FormControl>
-                            <FormLabel className="font-normal">Woman</FormLabel>
+                            <FormLabel className="font-normal">No</FormLabel>
                           </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="other" />
+                              <RadioGroupItem value="prefer_not_to_say" />
                             </FormControl>
                             <FormLabel className="font-normal">
-                              Something else / Prefer not to say
+                              Prefer not to say
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -215,7 +237,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                     </FormItem>
                   )}
                 />
-                {/* Age Group Field */}
+                {/* Age Group */}
                 <FormField
                   control={form.control}
                   name="ageGroup"
@@ -249,14 +271,40 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
 
             {currentStep === 1 && (
               <>
-                {/* Personality Field */}
+                {/* Natural Hair Color */}
                 <FormField
                   control={form.control}
-                  name="personality"
+                  name="naturalHairColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>What is your natural hair color?</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="color"
+                            className="p-1 h-10 w-14 block bg-white border border-gray-200 cursor-pointer rounded-lg disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700"
+                            {...field}
+                          />
+                          <Input
+                            type="text"
+                            placeholder="#000000"
+                            maxLength={7}
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Skin Reaction to Sun */}
+                <FormField
+                  control={form.control}
+                  name="skinReactionToSun"
                   render={({ field }) => (
                     <FormItem className="space-y-3">
                       <FormLabel>
-                        Would you say you are rather introverted or extraverted?
+                        How does your skin react to the sun?
                       </FormLabel>
                       <FormControl>
                         <RadioGroup
@@ -264,28 +312,36 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                           defaultValue={field.value}
                           className="flex flex-col space-y-1"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="introvert" />
+                              <RadioGroupItem value="burns_easily" />
                             </FormControl>
                             <FormLabel className="font-normal">
-                              Introvert
+                              I burn easily and rarely tan.
                             </FormLabel>
                           </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="extravert" />
+                              <RadioGroupItem value="burns_then_tans" />
                             </FormControl>
                             <FormLabel className="font-normal">
-                              Extravert
+                              I usually burn first, then tan lightly.
                             </FormLabel>
                           </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormItem className="flex items-center space-x-3">
                             <FormControl>
-                              <RadioGroupItem value="ambivert" />
+                              <RadioGroupItem value="tans_easily" />
                             </FormControl>
                             <FormLabel className="font-normal">
-                              Something in between (Ambivert)
+                              I tan easily and rarely burn.
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="tans_deeply" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              My skin tans deeply and I almost never burn.
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -294,18 +350,98 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                     </FormItem>
                   )}
                 />
-                {/* Placeholder 1 Field */}
+                {/* Vein Color */}
                 <FormField
                   control={form.control}
-                  name="placeholderInfo1"
+                  name="veinColor"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Placeholder Question 1 (Optional)</FormLabel>
+                    <FormItem className="space-y-3">
+                      <FormLabel>
+                        What color do your veins appear in natural light?
+                      </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter some optional info..."
-                          {...field}
-                        />
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="blue_or_purple" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              My veins appear mostly Blue or Purple.
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="green" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              My veins appear mostly Green.
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="blue_and_green" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              My veins appear to be a mix of Blue and Green.
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* Jewelry Preference */}
+                <FormField
+                  control={form.control}
+                  name="jewelryPreference"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Which metal tones look best on you?</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="silver_platinum" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Silver, Platinum, or White Gold
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="gold" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Gold or Yellow Gold
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="rose_gold_or_both" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Both or Rose Gold
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3">
+                            <FormControl>
+                              <RadioGroupItem value="unknown" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              I don&apos;t know / I don&apos;t usually wear
+                              jewelry
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -316,42 +452,63 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
 
             {currentStep === 2 && (
               <>
-                {/* Placeholder 2 Field */}
+                {/* Flattering Colors */}
                 <FormField
                   control={form.control}
-                  name="placeholderInfo2"
+                  name="flatteringColors"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Placeholder Question 2 (Optional Text)
+                        Which color palette do you feel looks best on you?
+                        (Optional)
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Another optional text field..."
-                          {...field}
-                        />
-                      </FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a color palette" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {colorPalettes.map((palette) => (
+                            <SelectItem key={palette} value={palette}>
+                              {palette}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {/* Placeholder 3 Field */}
+                {/* Unflattering Colors */}
                 <FormField
                   control={form.control}
-                  name="placeholderInfo3"
+                  name="unflatteringColors"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Placeholder Question 3 (Optional Boolean)
-                        </FormLabel>
-                      </div>
+                    <FormItem>
+                      <FormLabel>
+                        Which color palette do you tend to avoid? (Optional)
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a color palette" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {colorPalettes.map((palette) => (
+                            <SelectItem key={palette} value={palette}>
+                              {palette}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

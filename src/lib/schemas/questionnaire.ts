@@ -2,29 +2,33 @@ import { z } from "zod";
 
 // Define Schema for Questionnaire Data
 export const questionnaireSchema = z.object({
-  // Keep optional fields for now, might remove if not needed by LLM later
-  naturalHairColor: z.string().optional(),
-  eyeColor: z.string().optional(),
-  skinReactionToSun: z
-    .enum(["burns_easily", "tans_easily", "burns_then_tans"])
-    .optional(),
-
-  // New fields
-  gender: z.enum(["man", "woman", "other"], {
-    required_error: "Please select your gender",
+  makeupUsage: z.enum(["yes", "no", "prefer_not_to_say"], {
+    required_error: "Please select if you use makeup",
   }),
   ageGroup: z.enum(
     ["under_18", "18_24", "25_34", "35_44", "45_54", "55_plus"],
-    {
-      required_error: "Please select your age group",
-    }
+    { required_error: "Please select your age group" }
   ),
-  personality: z.enum(["introvert", "extravert", "ambivert"], {
-    required_error: "Please select your personality type",
+  naturalHairColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, {
+      message: "Please enter a valid hex color code (e.g., #RRGGBB)",
+    })
+    .min(7) // Ensure it includes '#' and 6 hex digits
+    .max(7),
+  skinReactionToSun: z.enum(
+    ["burns_easily", "burns_then_tans", "tans_easily", "tans_deeply"],
+    { required_error: "Please select how your skin reacts to the sun" }
+  ),
+  veinColor: z.enum(["blue_or_purple", "green", "blue_and_green"], {
+    required_error: "Please select your vein color",
   }),
-  placeholderInfo1: z.string().optional(),
-  placeholderInfo2: z.string().optional(),
-  placeholderInfo3: z.boolean().optional(),
+  jewelryPreference: z.enum(
+    ["silver_platinum", "gold", "rose_gold_or_both", "unknown"],
+    { required_error: "Please select your jewelry preference" }
+  ),
+  flatteringColors: z.string().optional(),
+  unflatteringColors: z.string().optional(),
 });
 
 export type QuestionnaireFormData = z.infer<typeof questionnaireSchema>;

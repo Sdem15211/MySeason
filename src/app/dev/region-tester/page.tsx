@@ -14,7 +14,7 @@ import {
   CalculatedRegions,
   ExtractedColors,
   StoredLandmarks,
-} from "@/lib/image-analysis";
+} from "@/lib/types/image-analysis.types";
 import { Loader2 } from "lucide-react";
 
 interface AnalysisResult {

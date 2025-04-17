@@ -9,6 +9,7 @@ import {
   StoredLandmarks,
   ExtractedColors,
 } from "@/lib/types/image-analysis.types";
+import { contrastRatioHex } from "@/lib/color-contrast";
 // import { del } from '@vercel/blob'; // Uncomment if cleanup needed
 
 // Define a more specific type for questionnaire data if possible
@@ -23,6 +24,21 @@ interface QuestionnaireData {
   flatteringColors?: string[] | string | null; // Allow string if free text
   unflatteringColors?: string[] | string | null;
   // Add other fields as necessary
+}
+
+// Define input data structure to be stored
+interface StoredInputData {
+  extractedFeatures: ExtractedColors & {
+    // Use ExtractedColors from image-analysis.types
+    contrast?: {
+      skinEyeRatio?: number;
+      skinHairRatio?: number;
+      eyeHairRatio?: number;
+      overall?: string;
+    };
+    calculatedUndertone?: string;
+  };
+  questionnaireData: QuestionnaireData; // Use existing QuestionnaireData interface
 }
 
 interface RouteParams {
@@ -155,20 +171,57 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         extractedData // Log the whole object
       );
 
-      // --- 3c. LLM Analysis ---
-      console.log(`   - Calling LLM analysis...`);
-
+      // --- 3c. LLM Analysis Preparation: compute contrast levels ---
       // Safely cast questionnaireData after validation
       const validatedQuestionnaireData =
         session.questionnaireData as QuestionnaireData;
 
-      analysisResult = await generateAnalysis({
-        extractedColors: {
-          skinColorHex: extractedData.skinColorHex,
-          averageEyeColorHex: extractedData.averageEyeColorHex,
-          skinUndertone: extractedData.skinUndertone,
-          averageEyebrowColorHex: extractedData.averageEyebrowColorHex, // Pass eyebrow color
+      // Extract hex colors
+      const skinHex = extractedData.skinColorHex;
+      const eyeHex = extractedData.averageEyeColorHex;
+      const hairHex = validatedQuestionnaireData.naturalHairColor;
+
+      if (!skinHex || !eyeHex || !hairHex) {
+        throw new Error(
+          "Missing required color data for contrast calculations."
+        );
+      }
+
+      // Compute contrast ratios and categories
+      const skinEyeRatio = contrastRatioHex(skinHex, eyeHex);
+      const skinHairRatio = contrastRatioHex(skinHex, hairHex);
+      const eyeHairRatio = contrastRatioHex(eyeHex, hairHex);
+
+      const overallCategory = [skinEyeRatio, skinHairRatio, eyeHairRatio].every(
+        (r) => r >= 7
+      )
+        ? "High"
+        : [skinEyeRatio, skinHairRatio, eyeHairRatio].some((r) => r >= 4.5)
+        ? "Medium"
+        : "Low";
+
+      // Prepare augmented extractedColors for the AI prompt
+      const aiExtractedColors = {
+        ...extractedData,
+        contrast: {
+          skinEyeRatio,
+          skinHairRatio,
+          eyeHairRatio,
+          overall: overallCategory,
         },
+      };
+
+      // --- 3d. LLM Analysis ---
+      console.log(`   - Calling LLM analysis...`);
+
+      // Combine inputs for storage
+      const inputDataForStorage: StoredInputData = {
+        extractedFeatures: aiExtractedColors, // This includes calculated contrast
+        questionnaireData: validatedQuestionnaireData,
+      };
+
+      analysisResult = await generateAnalysis({
+        extractedColors: aiExtractedColors,
         questionnaireAnswers: validatedQuestionnaireData as Record<
           string,
           string | number | boolean
@@ -176,12 +229,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
       console.log(`   - LLM analysis complete.`);
 
-      // --- 3d. Store Result in 'analyses' Table ---
-      console.log(`   - Storing analysis result in database...`);
+      // --- 3e. Store Result in 'analyses' Table ---
+      console.log(`   - Storing analysis result and input data in database...`);
       const newAnalysisId = generateUUID();
       await db.insert(analyses).values({
         id: newAnalysisId,
-        result: analysisResult,
+        result: analysisResult, // The validated result object from LLM
+        inputData: inputDataForStorage, // Store the combined input data
       });
       finalAnalysisId = newAnalysisId;
       console.log(`   - Analysis result stored with ID: ${finalAnalysisId}`);

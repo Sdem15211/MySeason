@@ -6,9 +6,11 @@ import {
   StoredLandmarks,
   CalculatedRegions,
   ExtractedColors,
+  StoredLandmark,
+} from "@/lib/types/image-analysis.types";
+import {
   calculateFaceRegions,
   extractFacialColors,
-  StoredLandmark,
 } from "@/lib/image-analysis";
 
 // Define the type for Google Vision API landmarks if not already available
