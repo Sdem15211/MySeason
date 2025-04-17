@@ -58,11 +58,13 @@ export type StoredLandmarks = StoredLandmark[] | null | undefined;
 export type CalculatedRegions = {
   leftCheekRegion: sharp.Region | null;
   rightCheekRegion: sharp.Region | null;
-  foreheadRegion: sharp.Region | null;
+  foreheadCenterRegion: sharp.Region | null;
+  foreheadLeftRegion: sharp.Region | null;
+  foreheadRightRegion: sharp.Region | null;
   leftEyeRegion: sharp.Region | null;
   rightEyeRegion: sharp.Region | null;
-  leftEyebrowRegion: sharp.Region | null; // Added
-  rightEyebrowRegion: sharp.Region | null; // Added
+  leftEyebrowRegion: sharp.Region | null;
+  rightEyebrowRegion: sharp.Region | null;
 };
 
 // Possible undertone categories

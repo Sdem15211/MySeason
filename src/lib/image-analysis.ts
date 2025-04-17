@@ -205,7 +205,9 @@ export function calculateFaceRegions(
     return {
       leftCheekRegion: null,
       rightCheekRegion: null,
-      foreheadRegion: null,
+      foreheadCenterRegion: null,
+      foreheadLeftRegion: null,
+      foreheadRightRegion: null,
       leftEyeRegion: null,
       rightEyeRegion: null,
       leftEyebrowRegion: null,
@@ -218,12 +220,12 @@ export function calculateFaceRegions(
     Math.round(Math.min(imageWidth, imageHeight) * 0.05)
   );
 
-  // Find necessary landmarks (Skin) - Use standard API string types
+  // Find necessary landmarks (Skin)
   const leftCheek = findLandmark(landmarks, "LEFT_CHEEK_CENTER");
   const rightCheek = findLandmark(landmarks, "RIGHT_CHEEK_CENTER");
   const foreheadGlabella = findLandmark(landmarks, "FOREHEAD_GLABELLA");
 
-  // Find necessary landmarks (Eyes) - Use standard API string types
+  // Find necessary landmarks (Eyes)
   const leftEyeLeftCorner = findLandmark(landmarks, "LEFT_EYE_LEFT_CORNER");
   const leftEyeRightCorner = findLandmark(landmarks, "LEFT_EYE_RIGHT_CORNER");
   const leftEyeTopBoundary = findLandmark(landmarks, "LEFT_EYE_TOP_BOUNDARY");
@@ -239,7 +241,7 @@ export function calculateFaceRegions(
     "RIGHT_EYE_BOTTOM_BOUNDARY"
   );
 
-  // Find necessary landmarks (Eyebrows) - Use standard API string types
+  // Find necessary landmarks (Eyebrows)
   const leftOfLeftEyebrow = findLandmark(landmarks, "LEFT_OF_LEFT_EYEBROW");
   const rightOfLeftEyebrow = findLandmark(landmarks, "RIGHT_OF_LEFT_EYEBROW");
   const leftEyebrowUpperMidpoint = findLandmark(
@@ -253,7 +255,7 @@ export function calculateFaceRegions(
     "RIGHT_EYEBROW_UPPER_MIDPOINT"
   );
 
-  // --- Calculate Skin Regions --- Original logic restored
+  // --- Calculate Cheek Regions ---
   const leftCheekRegion = calculateRegion(
     leftCheek?.position?.x,
     leftCheek?.position?.y,
@@ -270,17 +272,46 @@ export function calculateFaceRegions(
     imageWidth,
     imageHeight
   );
-  let foreheadRegion: sharp.Region | null = null;
+
+  // --- Calculate Forehead Regions ---
+  let foreheadCenterRegion: sharp.Region | null = null;
+  let foreheadLeftRegion: sharp.Region | null = null;
+  let foreheadRightRegion: sharp.Region | null = null;
+
   if (
     foreheadGlabella?.position?.x != null &&
     foreheadGlabella?.position?.y != null
   ) {
     const centerX = foreheadGlabella.position.x;
     const centerY = foreheadGlabella.position.y;
-    // Original Shift
     const verticalShift = baseRegionSize * 2;
     const shiftedCenterY = centerY - verticalShift;
-    foreheadRegion = calculateRegion(
+    const additionalVerticalOffset = Math.round(baseRegionSize * 1);
+    const outerShiftedCenterY = shiftedCenterY - additionalVerticalOffset;
+
+    let horizontalOffset: number;
+    const eyebrowOffsetMultiplier = 2;
+    const fallbackMultiplier = 2.0;
+
+    const leftInnerBrow = rightOfLeftEyebrow?.position?.x;
+    const rightInnerBrow = leftOfRightEyebrow?.position?.x;
+
+    if (
+      leftInnerBrow != null &&
+      rightInnerBrow != null &&
+      rightInnerBrow > leftInnerBrow
+    ) {
+      horizontalOffset =
+        ((rightInnerBrow - leftInnerBrow) / 2) * eyebrowOffsetMultiplier;
+    } else {
+      horizontalOffset = baseRegionSize * fallbackMultiplier;
+    }
+    horizontalOffset = Math.max(
+      baseRegionSize * 1.5,
+      Math.round(horizontalOffset)
+    );
+
+    foreheadCenterRegion = calculateRegion(
       centerX,
       shiftedCenterY,
       baseRegionSize,
@@ -288,9 +319,27 @@ export function calculateFaceRegions(
       imageWidth,
       imageHeight
     );
+
+    foreheadLeftRegion = calculateRegion(
+      centerX - horizontalOffset,
+      outerShiftedCenterY,
+      baseRegionSize,
+      baseRegionSize,
+      imageWidth,
+      imageHeight
+    );
+
+    foreheadRightRegion = calculateRegion(
+      centerX + horizontalOffset,
+      outerShiftedCenterY,
+      baseRegionSize,
+      baseRegionSize,
+      imageWidth,
+      imageHeight
+    );
   }
 
-  // --- Calculate Eye Regions --- Original logic restored
+  // --- Calculate Eye Regions ---
   const eyeRegionSize = Math.max(4, Math.round(baseRegionSize * 0.3));
   const eyeHorizontalShift = Math.round(eyeRegionSize * 0.5);
 
@@ -305,7 +354,6 @@ export function calculateFaceRegions(
       (leftEyeLeftCorner.position.x + leftEyeRightCorner.position.x) / 2;
     const centerY =
       (leftEyeTopBoundary.position.y + leftEyeBottomBoundary.position.y) / 2;
-    // Original shift
     const shiftedCenterX = centerX - eyeHorizontalShift;
     leftEyeRegion = calculateRegion(
       shiftedCenterX,
@@ -328,7 +376,6 @@ export function calculateFaceRegions(
       (rightEyeLeftCorner.position.x + rightEyeRightCorner.position.x) / 2;
     const centerY =
       (rightEyeTopBoundary.position.y + rightEyeBottomBoundary.position.y) / 2;
-    // Original shift
     const shiftedCenterX = centerX + eyeHorizontalShift;
     rightEyeRegion = calculateRegion(
       shiftedCenterX,
@@ -340,7 +387,7 @@ export function calculateFaceRegions(
     );
   }
 
-  // --- Calculate Eyebrow Regions --- Added
+  // --- Calculate Eyebrow Regions ---
   const eyebrowRegionWidth = Math.max(6, Math.round(baseRegionSize * 0.6));
   const eyebrowRegionHeight = Math.max(3, Math.round(baseRegionSize * 0.2));
 
@@ -353,7 +400,7 @@ export function calculateFaceRegions(
     const centerX =
       (leftOfLeftEyebrow.position.x + rightOfLeftEyebrow.position.x) / 2;
     const centerY = leftEyebrowUpperMidpoint.position.y;
-    const eyebrowVerticalShift = Math.round(eyebrowRegionHeight * 1); // Shift down slightly from upper midpoint
+    const eyebrowVerticalShift = Math.round(eyebrowRegionHeight * 1);
     const shiftedCenterY = centerY + eyebrowVerticalShift;
 
     leftEyebrowRegion = calculateRegion(
@@ -391,7 +438,9 @@ export function calculateFaceRegions(
   return {
     leftCheekRegion,
     rightCheekRegion,
-    foreheadRegion,
+    foreheadCenterRegion,
+    foreheadLeftRegion,
+    foreheadRightRegion,
     leftEyeRegion,
     rightEyeRegion,
     leftEyebrowRegion,
@@ -428,7 +477,9 @@ export const extractFacialColors = async (
   const [
     leftCheekRgb,
     rightCheekRgb,
-    foreheadRgb,
+    foreheadCenterRgb,
+    foreheadLeftRgb,
+    foreheadRightRgb,
     leftEyeRgb,
     rightEyeRgb,
     leftEyebrowRgb,
@@ -436,17 +487,24 @@ export const extractFacialColors = async (
   ] = await Promise.all([
     getAverageRgbColor(imageBuffer, regions.leftCheekRegion),
     getAverageRgbColor(imageBuffer, regions.rightCheekRegion),
-    getAverageRgbColor(imageBuffer, regions.foreheadRegion),
+    getAverageRgbColor(imageBuffer, regions.foreheadCenterRegion),
+    getAverageRgbColor(imageBuffer, regions.foreheadLeftRegion),
+    getAverageRgbColor(imageBuffer, regions.foreheadRightRegion),
     getAverageRgbColor(imageBuffer, regions.leftEyeRegion),
     getAverageRgbColor(imageBuffer, regions.rightEyeRegion),
     getAverageRgbColor(imageBuffer, regions.leftEyebrowRegion),
     getAverageRgbColor(imageBuffer, regions.rightEyebrowRegion),
   ]);
 
-  // --- Combine Skin Colors --- Original logic restored
-  const availableSkinRgbs = [leftCheekRgb, rightCheekRgb, foreheadRgb].filter(
-    (rgb): rgb is RgbColor => rgb !== null
-  );
+  // --- Combine Skin Colors ---
+  const availableSkinRgbs = [
+    leftCheekRgb,
+    rightCheekRgb,
+    foreheadCenterRgb,
+    foreheadLeftRgb,
+    foreheadRightRgb,
+  ].filter((rgb): rgb is RgbColor => rgb !== null);
+
   let finalSkinRgb: RgbColor | null = null;
   if (availableSkinRgbs.length > 0) {
     const totalR = availableSkinRgbs.reduce((sum, rgb) => sum + rgb.r, 0);

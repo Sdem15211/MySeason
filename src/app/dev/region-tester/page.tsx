@@ -137,7 +137,9 @@ export default function RegionTesterPage() {
 
       drawRegion(regionsToDraw.leftCheekRegion);
       drawRegion(regionsToDraw.rightCheekRegion);
-      drawRegion(regionsToDraw.foreheadRegion);
+      drawRegion(regionsToDraw.foreheadCenterRegion);
+      drawRegion(regionsToDraw.foreheadLeftRegion);
+      drawRegion(regionsToDraw.foreheadRightRegion);
       drawRegion(regionsToDraw.leftEyeRegion);
       drawRegion(regionsToDraw.rightEyeRegion);
       // Add eyebrow regions
