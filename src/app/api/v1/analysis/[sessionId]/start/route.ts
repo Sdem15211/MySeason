@@ -3,42 +3,29 @@ import { db } from "@/db";
 import { sessions, analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
-import { AnalysisResult, generateAnalysis } from "@/lib/ai";
+import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
+import { generateAnalysis } from "@/lib/ai";
 import { extractFacialColors } from "@/lib/image-analysis";
 import {
   StoredLandmarks,
   ExtractedColors,
 } from "@/lib/types/image-analysis.types";
 import { contrastRatioHex } from "@/lib/color-contrast";
+import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
+import { LLMInput } from "@/lib/schemas/llm-input.schema";
 // import { del } from '@vercel/blob'; // Uncomment if cleanup needed
 
-// Define a more specific type for questionnaire data if possible
-// Example structure - adjust based on actual questionnaire fields
-interface QuestionnaireData {
-  gender?: string | null;
-  age?: number | null;
-  naturalHairColor?: string | null;
-  sunReaction?: string | null;
-  veinColor?: string | null;
-  jewelryPreference?: string | null;
-  flatteringColors?: string[] | string | null; // Allow string if free text
-  unflatteringColors?: string[] | string | null;
-  // Add other fields as necessary
-}
-
-// Define input data structure to be stored
-interface StoredInputData {
+export interface StoredInputData {
   extractedFeatures: ExtractedColors & {
-    // Use ExtractedColors from image-analysis.types
     contrast?: {
       skinEyeRatio?: number;
       skinHairRatio?: number;
       eyeHairRatio?: number;
-      overall?: string;
+      overall?: "High" | "Medium" | "Low";
     };
     calculatedUndertone?: string;
   };
-  questionnaireData: QuestionnaireData; // Use existing QuestionnaireData interface
+  questionnaireData: QuestionnaireFormData;
 }
 
 interface RouteParams {
@@ -141,7 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.log(`Session ${sessionId} status updated to analysis_pending.`);
 
     // --- 3. Perform Analysis ---
-    let analysisResult: AnalysisResult | null = null;
+    let analysisResult: AnalysisOutput | null = null;
     let finalAnalysisId: string | null = null;
 
     try {
@@ -161,29 +148,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // --- 3b. Image Processing (Facial Color Extraction) ---
       const landmarks = session.faceLandmarks as StoredLandmarks;
-      // Call the renamed function
-      const extractedData: ExtractedColors = await extractFacialColors(
+      const extractedColorData: ExtractedColors = await extractFacialColors(
         imageBuffer,
         landmarks
       );
       console.log(
         `   - Extracted facial data for session ${sessionId}:`,
-        extractedData // Log the whole object
+        extractedColorData
       );
 
       // --- 3c. LLM Analysis Preparation: compute contrast levels ---
-      // Safely cast questionnaireData after validation
       const validatedQuestionnaireData =
-        session.questionnaireData as QuestionnaireData;
+        session.questionnaireData as QuestionnaireFormData;
 
       // Extract hex colors
-      const skinHex = extractedData.skinColorHex;
-      const eyeHex = extractedData.averageEyeColorHex;
+      const skinHex = extractedColorData.skinColorHex;
+      const eyeHex = extractedColorData.averageEyeColorHex;
       const hairHex = validatedQuestionnaireData.naturalHairColor;
 
       if (!skinHex || !eyeHex || !hairHex) {
         throw new Error(
-          "Missing required color data for contrast calculations."
+          "Missing required color data (skin, eye, or hair hex) for contrast calculations."
         );
       }
 
@@ -192,50 +177,68 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const skinHairRatio = contrastRatioHex(skinHex, hairHex);
       const eyeHairRatio = contrastRatioHex(eyeHex, hairHex);
 
-      const overallCategory = [skinEyeRatio, skinHairRatio, eyeHairRatio].every(
-        (r) => r >= 7
-      )
-        ? "High"
-        : [skinEyeRatio, skinHairRatio, eyeHairRatio].some((r) => r >= 4.5)
-        ? "Medium"
-        : "Low";
+      let overallCategory: "High" | "Medium" | "Low";
+      const ratios = [skinEyeRatio, skinHairRatio, eyeHairRatio];
+      if (ratios.some((r) => r >= 7)) {
+        overallCategory = "High";
+      } else if (ratios.some((r) => r >= 4.5)) {
+        overallCategory = "Medium";
+      } else {
+        overallCategory = "Low";
+      }
 
-      // Prepare augmented extractedColors for the AI prompt
-      const aiExtractedColors = {
-        ...extractedData,
+      // Prepare the \'extractedColors\' part for the LLM Input, including contrast
+      const llmExtractedColors = {
+        // Spread the base data, excluding the LAB objects we need to remap
+        skinColorHex: extractedColorData.skinColorHex,
+        // Remap LAB values to use uppercase keys L, A, B
+        skinColorLAB: extractedColorData.skinColorLab
+          ? {
+              L: extractedColorData.skinColorLab.l,
+              A: extractedColorData.skinColorLab.a,
+              B: extractedColorData.skinColorLab.b,
+            }
+          : null,
+        averageEyeColorHex: extractedColorData.averageEyeColorHex,
+        // Add contrast data
         contrast: {
           skinEyeRatio,
           skinHairRatio,
           eyeHairRatio,
           overall: overallCategory,
         },
+        // Pass calculatedUndertone if available
+        // calculatedUndertone: extractedColorData.calculatedUndertone || null,
+      };
+
+      // Prepare the complete LLM input object
+      const llmInput: LLMInput = {
+        extractedColors: llmExtractedColors,
+        questionnaireAnswers: validatedQuestionnaireData,
       };
 
       // --- 3d. LLM Analysis ---
-      console.log(`   - Calling LLM analysis...`);
-
-      // Combine inputs for storage
-      const inputDataForStorage: StoredInputData = {
-        extractedFeatures: aiExtractedColors, // This includes calculated contrast
-        questionnaireData: validatedQuestionnaireData,
-      };
-
-      analysisResult = await generateAnalysis({
-        extractedColors: aiExtractedColors,
-        questionnaireAnswers: validatedQuestionnaireData as Record<
-          string,
-          string | number | boolean
-        >,
-      });
+      console.log(`   - Calling LLM analysis with prepared input...`);
+      analysisResult = await generateAnalysis(llmInput);
       console.log(`   - LLM analysis complete.`);
 
       // --- 3e. Store Result in 'analyses' Table ---
       console.log(`   - Storing analysis result and input data in database...`);
       const newAnalysisId = generateUUID();
+
+      // Prepare the data TO BE STORED (using StoredInputData structure)
+      const inputDataForStorage: StoredInputData = {
+        extractedFeatures: {
+          ...extractedColorData,
+          contrast: llmExtractedColors.contrast,
+        },
+        questionnaireData: validatedQuestionnaireData,
+      };
+
       await db.insert(analyses).values({
         id: newAnalysisId,
-        result: analysisResult, // The validated result object from LLM
-        inputData: inputDataForStorage, // Store the combined input data
+        result: analysisResult,
+        inputData: inputDataForStorage,
       });
       finalAnalysisId = newAnalysisId;
       console.log(`   - Analysis result stored with ID: ${finalAnalysisId}`);
@@ -247,9 +250,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           status: "analysis_complete",
           analysisId: finalAnalysisId,
           updatedAt: new Date(),
-          // Optionally clear temporary data here
-          // faceLandmarks: null,
-          // questionnaireData: null,
         })
         .where(eq(sessions.id, sessionId));
       console.log(`Session ${sessionId} status updated to analysis_complete.`);
@@ -263,13 +263,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         `Analysis pipeline failed for session ${sessionId}:`,
         pipelineError
       );
-      // --- 4b. Update Session Status to Failed ---
-      await db
-        .update(sessions)
-        .set({ status: "analysis_failed", updatedAt: new Date() })
-        .where(eq(sessions.id, sessionId));
-      console.log(`Session ${sessionId} status updated to analysis_failed.`);
-
+      // Directly attempt to update the status to failed, assuming it should be pending
+      try {
+        await db
+          .update(sessions)
+          .set({ status: "analysis_failed", updatedAt: new Date() })
+          .where(eq(sessions.id, sessionId));
+        console.log(
+          `Session ${sessionId} status updated to analysis_failed due to pipeline error.`
+        );
+      } catch (updateError) {
+        console.error(
+          `Failed to update session ${sessionId} status to failed during pipeline error handling:`,
+          updateError
+        );
+      }
+      // Re-throw the error to be caught by the outer handler
       throw pipelineError;
     }
 
@@ -290,15 +299,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
     // Ensure session status is marked as failed if not already handled
     // (This check might be redundant if the inner try/catch always updates on failure)
-    if (session && session.status !== "analysis_failed") {
+    if (
+      session &&
+      session.status !== "analysis_pending" &&
+      session.status !== "analysis_failed"
+    ) {
       try {
         await db
           .update(sessions)
           .set({ status: "analysis_failed", updatedAt: new Date() })
           .where(eq(sessions.id, sessionId));
+        console.log(
+          `Session ${sessionId} status updated to analysis_failed due to outer catch block.`
+        );
       } catch (updateError) {
         console.error(
-          `Failed to update session ${sessionId} to failed status during error handling:`,
+          `Failed to update session ${sessionId} to failed status during outer error handling:`,
           updateError
         );
       }

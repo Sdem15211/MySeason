@@ -4,9 +4,11 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
-import { AnalysisResult } from "@/lib/ai"; // Assuming AnalysisResult type is defined here
+import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyButton } from "@/components/features/analysis/copy-button"; // Assume this component exists or create later
+import { ExtractedColors } from "@/lib/types/image-analysis.types";
+import { QuestionnaireFormData } from "@/lib/schemas/questionnaire"; // Assuming this exists
 
 interface AnalysisResultsPageProps {
   params: {
@@ -36,23 +38,18 @@ const ColorSwatch = ({ color, label }: { color: string; label?: string }) => (
   </div>
 );
 
+// Updated interface to match the structure stored in the database (from API route)
 interface StoredInputData {
-  extractedFeatures: {
-    averageEyeColorHex?: string;
-    skinColorHex?: string;
-    averageEyebrowColorHex?: string;
-    skinUndertone?: string;
+  extractedFeatures: ExtractedColors & {
     contrast?: {
       skinEyeRatio?: number;
       skinHairRatio?: number;
       eyeHairRatio?: number;
-      overall?: string;
+      overall?: "High" | "Medium" | "Low";
     };
+    calculatedUndertone?: string;
   };
-  questionnaireData: {
-    naturalHairColor?: string;
-    // Add other questionnaire fields as needed
-  };
+  questionnaireData: QuestionnaireFormData;
 }
 
 export default async function AnalysisResultsPage({
@@ -107,10 +104,10 @@ export default async function AnalysisResultsPage({
     notFound();
   }
 
-  // Type assertion for result
-  const result = analysisRecord.result as AnalysisResult;
+  // Use the correct type for the result
+  const result = analysisRecord.result as AnalysisOutput;
 
-  // Type assertion/parsing for input data (add Zod validation for robustness)
+  // Use the updated interface (add Zod validation later for robustness)
   const inputData = analysisRecord.inputData as StoredInputData;
   const extractedFeatures = inputData.extractedFeatures ?? {};
   const questionnaireData = inputData.questionnaireData ?? {};
@@ -141,27 +138,73 @@ export default async function AnalysisResultsPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Best Colors</h3>
-            {result.palettes.bestColors.map((color) => (
-              <ColorSwatch key={`best-${color}`} color={color} />
+            <h3 className="text-lg font-semibold mb-2">Wow Colors</h3>
+            {result.personalPalette.wowColors.map(({ name, hex }) => (
+              <ColorSwatch key={`wow-${hex}`} color={hex} label={name} />
             ))}
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-2">Neutral Colors</h3>
-            {result.palettes.neutralColors.map((color) => (
-              <ColorSwatch key={`neutral-${color}`} color={color} />
+            <h3 className="text-lg font-semibold mb-2">Best Neutrals</h3>
+            {result.personalPalette.bestNeutrals.map(({ name, hex }) => (
+              <ColorSwatch key={`neutral-${hex}`} color={hex} label={name} />
             ))}
           </div>
           <div>
             <h3 className="text-lg font-semibold mb-2">Accent Colors</h3>
-            {result.palettes.accentColors.map((color) => (
-              <ColorSwatch key={`accent-${color}`} color={color} />
+            {result.personalPalette.accentColors.map(({ name, hex }) => (
+              <ColorSwatch key={`accent-${hex}`} color={hex} label={name} />
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Input Data (Debug Section) */}
+      {/* Explanations Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Analysis Details & Explanations</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm text-muted-foreground">
+          <div>
+            <p>
+              <strong>Season:</strong> {result.season} -{" "}
+              <em>{result.seasonExplanation}</em>
+            </p>
+          </div>
+          <div>
+            <p>
+              <strong>Undertone:</strong> {result.undertone} -{" "}
+              <em>{result.undertoneExplanation}</em>
+            </p>
+          </div>
+          <div>
+            <p>
+              <strong>Contrast Level:</strong> {result.contrastLevel} -{" "}
+              <em>{result.contrastLevelExplanation}</em>
+            </p>
+          </div>
+          <div>
+            <p>
+              <strong>Palette Rationale:</strong>{" "}
+              <em>{result.paletteExplanation}</em>
+            </p>
+          </div>
+          <div>
+            <h3 className="text-md font-semibold mb-1 text-foreground">
+              Colors to Minimize
+            </h3>
+            <div className="mb-2">
+              {result.colorsToMinimize.map(({ name, hex }) => (
+                <ColorSwatch key={`minimize-${hex}`} color={hex} label={name} />
+              ))}
+            </div>
+            <p>
+              <em>{result.colorsToMinimizeExplanation}</em>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Input Data (Debug Section) - Updated to use extractedFeatures fields */}
       <Card className="mb-6 border-dashed border-amber-500">
         <CardHeader>
           <CardTitle className="text-amber-600">Input Data (Debug)</CardTitle>
@@ -191,19 +234,11 @@ export default async function AnalysisResultsPage({
                 Eye Color: Not Available
               </p>
             )}
-            {extractedFeatures?.averageEyebrowColorHex ? (
-              <ColorSwatch
-                color={extractedFeatures.averageEyebrowColorHex}
-                label="Eyebrow"
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Eyebrow Color: Not Available
-              </p>
-            )}
-            {extractedFeatures?.skinUndertone ? (
+            {/* Display calculatedUndertone if present */}
+            {extractedFeatures?.calculatedUndertone ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Undertone: {extractedFeatures.skinUndertone}
+                Calculated Undertone (Input):{" "}
+                {extractedFeatures.calculatedUndertone}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground mt-2">
@@ -251,14 +286,52 @@ export default async function AnalysisResultsPage({
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="prose prose-lg max-w-none dark:prose-invert">
-            <h3 className="font-semibold">Clothing</h3>
-            <p>{result.advice.clothing}</p>
+            <h3 className="font-semibold">Overall Vibe</h3>
+            <p>{result.overallVibe}</p>
 
-            <h3 className="font-semibold">Makeup</h3>
-            <p>{result.advice.makeup}</p>
+            <h3 className="font-semibold">Style & Combining Advice</h3>
+            <p>{result.styleAndCombiningAdvice}</p>
+            <p className="text-sm">
+              (<em>{result.styleAndCombiningExplanation}</em>)
+            </p>
 
-            <h3 className="font-semibold">Accessories</h3>
-            <p>{result.advice.accessories}</p>
+            <h3 className="font-semibold">Hair Color Guidance</h3>
+            <p>{result.hairColorGuidance}</p>
+            <p className="text-sm">
+              (<em>{result.hairColorExplanation}</em>)
+            </p>
+
+            <h3 className="font-semibold">Best Metal Tones</h3>
+            <p>{result.bestMetalTones.join(", ")}</p>
+            <p className="text-sm">
+              (<em>{result.metalTonesExplanation}</em>)
+            </p>
+
+            {/* Conditionally render Makeup section */}
+            {result.makeupRecommendations && (
+              <>
+                <h3 className="font-semibold">Makeup Recommendations</h3>
+                <p>
+                  <strong>Foundation:</strong>{" "}
+                  {result.makeupRecommendations.foundationFocus}
+                </p>
+                <p>
+                  <strong>Blush:</strong>{" "}
+                  {result.makeupRecommendations.blushFamilies.join(", ")}
+                </p>
+                <p>
+                  <strong>Lipstick:</strong>{" "}
+                  {result.makeupRecommendations.lipstickFamilies.join(", ")}
+                </p>
+                <p>
+                  <strong>Eyeshadow:</strong>{" "}
+                  {result.makeupRecommendations.eyeshadowTones.join(", ")}
+                </p>
+                <p className="text-sm">
+                  (<em>{result.makeupRecommendations.makeupExplanation}</em>)
+                </p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
