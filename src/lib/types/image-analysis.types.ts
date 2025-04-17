@@ -78,7 +78,8 @@ export type ExtractedColors = {
   skinColorHex: string | null;
   averageEyeColorHex: string | null;
   skinUndertone: SkinUndertone | null;
-  averageEyebrowColorHex: string | null; // Added
+  skinColorLab?: { l: number; a: number; b: number } | null; // Added for debugging
+  averageEyebrowColorHex: string | null;
 };
 
 // RGB color type

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         success: true,
         landmarks: landmarks, // Optional: return landmarks too for reference
         regions: regions,
-        colors: colors,
+        colors: colors, // This now includes skinColorLab from extractFacialColors
       },
       { status: 200 }
     );

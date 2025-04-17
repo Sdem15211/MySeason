@@ -12,10 +12,9 @@ import {
 
 // --- Helper Functions ---
 
-// Simplified: Finds a specific landmark from the list using case-insensitive string comparison
 const findLandmark = (
   landmarks: StoredLandmarks,
-  typeString: VisionLandmarkTypeString | string // Allow specific or general string
+  typeString: VisionLandmarkTypeString | string
 ): StoredLandmark | undefined => {
   if (!landmarks || !typeString) return undefined;
 
@@ -23,7 +22,6 @@ const findLandmark = (
 
   return landmarks.find((lm) => {
     if (!lm || !lm.type) return false;
-    // Compare type property (assuming it's a string) case-insensitively
     return (
       typeof lm.type === "string" && lm.type.toUpperCase() === upperTypeString
     );
@@ -99,8 +97,6 @@ const getAverageRgbColor = async (
     const stats = await sharp(extractedBuffer).toColorspace("srgb").stats();
     const channels = stats.channels;
 
-    // console.log(`Region ${JSON.stringify(intRegion)} channels:`, channels); // Keep logging minimal unless debugging
-
     if (channels && channels.length >= 3) {
       return {
         r: channels[0]?.mean ?? 0,
@@ -135,35 +131,52 @@ const calculateUndertoneFromRgb = (
     const clampedB = Math.max(0, Math.min(255, rgb.b));
     const [l, a, b] = convert.rgb.lab([clampedR, clampedG, clampedB]);
 
-    // --- Simple Thresholding Logic (Example - Needs Tuning!) ---
-    const B_WARM_THRESHOLD = 15.0; // If b* is significantly positive (yellow)
-    const B_COOL_THRESHOLD = 5.0; // If b* is low (potentially bluish)
-    const A_NEUTRAL_MAX = 10.0; // How close a* needs to be to zero for neutral
-    const B_NEUTRAL_MAX = 10.0; // How close b* needs to be to zero for neutral
-    // Olive detection is harder, might look for greenish hints (lower 'a') with some yellow ('b')
-    const A_OLIVE_MAX = 5.0;
-    const B_OLIVE_MIN = 10.0;
+    const NEUTRAL_A_THRESHOLD = 8.0;
+    const NEUTRAL_B_THRESHOLD = 8.0;
 
-    if (b > B_WARM_THRESHOLD && a > -2) {
-      console.log("Undertone classified as: Warm");
-      return "Warm";
-    }
-    if (b < B_COOL_THRESHOLD && a > -5) {
-      console.log("Undertone classified as: Cool");
-      return "Cool";
-    }
-    if (a < A_OLIVE_MAX && b > B_OLIVE_MIN && b < B_WARM_THRESHOLD) {
-      console.log("Undertone classified as: Olive");
-      return "Olive";
-    }
-    if (Math.abs(a) < A_NEUTRAL_MAX && Math.abs(b) < B_NEUTRAL_MAX) {
-      console.log("Undertone classified as: Neutral");
+    const WARM_B_MIN = 15.0;
+    const WARM_A_MIN = 0.0;
+
+    const COOL_B_MAX = 9.0;
+    const COOL_A_MAX = 12.0;
+
+    const OLIVE_A_MAX = 6.0;
+    const OLIVE_A_MIN = -6.0;
+    const OLIVE_B_MIN = 8.0;
+    const OLIVE_B_MAX = 24.0;
+
+    if (
+      Math.abs(a) <= NEUTRAL_A_THRESHOLD &&
+      Math.abs(b) <= NEUTRAL_B_THRESHOLD
+    ) {
       return "Neutral";
     }
 
+    if (b >= WARM_B_MIN && a >= WARM_A_MIN) {
+      return "Warm";
+    }
+
+    if (b <= COOL_B_MAX && a <= COOL_A_MAX) {
+      if (a >= OLIVE_A_MIN && a <= OLIVE_A_MAX && b >= OLIVE_B_MIN) {
+      } else {
+        return "Cool";
+      }
+    }
+
+    if (
+      a >= OLIVE_A_MIN &&
+      a <= OLIVE_A_MAX &&
+      b >= OLIVE_B_MIN &&
+      b <= OLIVE_B_MAX
+    ) {
+      if (!(b >= WARM_B_MIN && a >= WARM_A_MIN)) {
+        return "Olive";
+      }
+    }
+
     console.warn(
-      "Could not determine a definitive undertone category based on thresholds.",
-      { l, a, b }
+      "Could not determine a definitive undertone category based on refined thresholds.",
+      { l: l.toFixed(1), a: a.toFixed(1), b: b.toFixed(1) }
     );
     return "Undetermined";
   } catch (error) {
@@ -195,8 +208,8 @@ export function calculateFaceRegions(
       foreheadRegion: null,
       leftEyeRegion: null,
       rightEyeRegion: null,
-      leftEyebrowRegion: null, // Added
-      rightEyebrowRegion: null, // Added
+      leftEyebrowRegion: null,
+      rightEyebrowRegion: null,
     };
   }
 
@@ -381,8 +394,8 @@ export function calculateFaceRegions(
     foreheadRegion,
     leftEyeRegion,
     rightEyeRegion,
-    leftEyebrowRegion, // Added
-    rightEyebrowRegion, // Added
+    leftEyebrowRegion,
+    rightEyebrowRegion,
   };
 }
 
@@ -392,7 +405,6 @@ export const extractFacialColors = async (
   imageBuffer: Buffer,
   landmarks: StoredLandmarks
 ): Promise<ExtractedColors> => {
-  // Dynamic import of sharp
   const sharp = (await import("sharp")).default;
   let metadata;
   try {
@@ -412,8 +424,6 @@ export const extractFacialColors = async (
   // Calculate all necessary regions
   const regions = calculateFaceRegions(landmarks, imageWidth, imageHeight);
 
-  // console.log("Calculated Regions:", regions); // Keep logging minimal
-
   // Extract colors in parallel for all regions
   const [
     leftCheekRgb,
@@ -421,22 +431,17 @@ export const extractFacialColors = async (
     foreheadRgb,
     leftEyeRgb,
     rightEyeRgb,
-    leftEyebrowRgb, // Added
-    rightEyebrowRgb, // Added
+    leftEyebrowRgb,
+    rightEyebrowRgb,
   ] = await Promise.all([
     getAverageRgbColor(imageBuffer, regions.leftCheekRegion),
     getAverageRgbColor(imageBuffer, regions.rightCheekRegion),
     getAverageRgbColor(imageBuffer, regions.foreheadRegion),
     getAverageRgbColor(imageBuffer, regions.leftEyeRegion),
     getAverageRgbColor(imageBuffer, regions.rightEyeRegion),
-    getAverageRgbColor(imageBuffer, regions.leftEyebrowRegion), // Added
-    getAverageRgbColor(imageBuffer, regions.rightEyebrowRegion), // Added
+    getAverageRgbColor(imageBuffer, regions.leftEyebrowRegion),
+    getAverageRgbColor(imageBuffer, regions.rightEyebrowRegion),
   ]);
-
-  // Log extracted RGB values (Optional for debugging)
-  // console.log("Extracted RGB values:", {
-  //   leftCheekRgb, rightCheekRgb, foreheadRgb, leftEyeRgb, rightEyeRgb, leftEyebrowRgb, rightEyebrowRgb
-  // });
 
   // --- Combine Skin Colors --- Original logic restored
   const availableSkinRgbs = [leftCheekRgb, rightCheekRgb, foreheadRgb].filter(
@@ -482,34 +487,38 @@ export const extractFacialColors = async (
     // Only one eyebrow detected
     finalEyebrowRgb = availableEyebrowRgbs[0]!;
   }
-  // If length is 0, finalEyebrowRgb remains null
-
-  // Log final RGB values (Optional for debugging)
-  // console.log("Final RGB values:", {
-  //   skin: finalSkinRgb,
-  //   eye: finalEyeRgb,
-  //   eyebrow: finalEyebrowRgb,
-  // });
 
   // Calculate Undertone
   const skinUndertone = calculateUndertoneFromRgb(finalSkinRgb);
 
+  // Calculate Lab values for skin if possible (for debugging/display)
+  let skinColorLab: { l: number; a: number; b: number } | null = null;
+  if (finalSkinRgb) {
+    try {
+      const [l, a, b] = convert.rgb.lab([
+        Math.max(0, Math.min(255, finalSkinRgb.r)),
+        Math.max(0, Math.min(255, finalSkinRgb.g)),
+        Math.max(0, Math.min(255, finalSkinRgb.b)),
+      ]);
+      skinColorLab = { l, a, b };
+    } catch (labError) {
+      console.error(
+        "Error converting final skin RGB to Lab for reporting:",
+        labError
+      );
+    }
+  }
+
   // Convert final RGBs to Hex
   const skinColorHex = rgbToHex(finalSkinRgb);
   const averageEyeColorHex = rgbToHex(finalEyeRgb);
-  const averageEyebrowColorHex = rgbToHex(finalEyebrowRgb); // Added
-
-  // Log final hex values (Optional for debugging)
-  // console.log("Final hex values:", {
-  //   skin: skinColorHex,
-  //   eye: averageEyeColorHex,
-  //   eyebrow: averageEyebrowColorHex,
-  // });
+  const averageEyebrowColorHex = rgbToHex(finalEyebrowRgb);
 
   return {
     skinColorHex,
     averageEyeColorHex,
     skinUndertone,
-    averageEyebrowColorHex, // Added
+    skinColorLab,
+    averageEyebrowColorHex,
   };
 };

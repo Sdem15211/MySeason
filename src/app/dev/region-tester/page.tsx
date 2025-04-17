@@ -194,46 +194,67 @@ export default function RegionTesterPage() {
               </pre>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Extracted Colors:</h3>
-              <div className="flex space-x-4 items-center">
-                <div className="text-center">
-                  <div
-                    className="w-16 h-16 rounded border border-border"
-                    style={{
-                      backgroundColor:
-                        analysisResult.colors.skinColorHex ?? "transparent",
-                    }}
-                  ></div>
-                  <span className="text-xs mt-1 block">
-                    Skin: {analysisResult.colors.skinColorHex ?? "N/A"}
-                  </span>
+              <h3 className="font-semibold mb-2">
+                Extracted Colors & Undertone:
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                {/* Color Swatches */}
+                <div className="flex space-x-4 items-center">
+                  <div className="text-center">
+                    <div
+                      className="w-16 h-16 rounded border border-border"
+                      style={{
+                        backgroundColor:
+                          analysisResult.colors.skinColorHex ?? "transparent",
+                      }}
+                    ></div>
+                    <span className="text-xs mt-1 block">
+                      Skin: {analysisResult.colors.skinColorHex ?? "N/A"}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <div
+                      className="w-16 h-16 rounded border border-border"
+                      style={{
+                        backgroundColor:
+                          analysisResult.colors.averageEyeColorHex ??
+                          "transparent",
+                      }}
+                    ></div>
+                    <span className="text-xs mt-1 block">
+                      Eye: {analysisResult.colors.averageEyeColorHex ?? "N/A"}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <div
+                      className="w-16 h-16 rounded border border-border"
+                      style={{
+                        backgroundColor:
+                          analysisResult.colors.averageEyebrowColorHex ??
+                          "transparent",
+                      }}
+                    ></div>
+                    <span className="text-xs mt-1 block">
+                      Eyebrow:{" "}
+                      {analysisResult.colors.averageEyebrowColorHex ?? "N/A"}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div
-                    className="w-16 h-16 rounded border border-border"
-                    style={{
-                      backgroundColor:
-                        analysisResult.colors.averageEyeColorHex ??
-                        "transparent",
-                    }}
-                  ></div>
-                  <span className="text-xs mt-1 block">
-                    Eye: {analysisResult.colors.averageEyeColorHex ?? "N/A"}
-                  </span>
-                </div>
-                <div className="text-center">
-                  <div
-                    className="w-16 h-16 rounded border border-border"
-                    style={{
-                      backgroundColor:
-                        analysisResult.colors.averageEyebrowColorHex ??
-                        "transparent",
-                    }}
-                  ></div>
-                  <span className="text-xs mt-1 block">
-                    Eyebrow:{" "}
-                    {analysisResult.colors.averageEyebrowColorHex ?? "N/A"}
-                  </span>
+
+                {/* Undertone & Lab Values */}
+                <div className="text-sm">
+                  <p>
+                    <span className="font-medium">Skin Undertone:</span>{" "}
+                    {analysisResult.colors.skinUndertone ?? "N/A"}
+                  </p>
+                  {analysisResult.colors.skinColorLab && (
+                    <p>
+                      <span className="font-medium">Skin Lab Values:</span> L:{" "}
+                      {analysisResult.colors.skinColorLab.l.toFixed(1)}, a:{" "}
+                      {analysisResult.colors.skinColorLab.a.toFixed(1)}, b:{" "}
+                      {analysisResult.colors.skinColorLab.b.toFixed(1)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -245,9 +266,8 @@ export default function RegionTesterPage() {
         <CardHeader>
           <CardTitle>3. Visualize Image</CardTitle>
           <CardDescription>
-            The uploaded image is displayed below.
-            {/* Add note about regions not being drawn */}
-            (Region boundaries are not drawn on the canvas currently)
+            The uploaded image is displayed below with calculated regions
+            overlaid.
           </CardDescription>
         </CardHeader>
         <CardContent>
