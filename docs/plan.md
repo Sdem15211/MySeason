@@ -77,10 +77,10 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
   - [x] API endpoint (`/api/v1/analysis/[sessionId]/start`) to trigger the main analysis process.
   - [x] Retrieve `uploadedImagePath` and `questionnaireData` from temporary storage (`sessions` table).
   - [x] Update session status to `analysis_pending`.
-  - [ ] Load temporary image file.
-  - [ ] Integrate `sharp` library for image processing.
-    - [ ] Extract image regions around key landmarks (eyes, cheeks, forehead/eyebrows).
-    - [ ] Calculate average color (HEX/RGB) for each region.
+  - [x] Load temporary image file.
+  - [x] Integrate `sharp` library for image processing.
+    - [x] Extract image regions around key landmarks (eyes, cheeks, forehead/eyebrows).
+    - [x] Calculate average color (HEX/RGB) for each region.
   - [x] Integrate Vercel AI SDK (Configured for Gemini).
     - [x] Construct detailed prompt including extracted colors, questionnaire answers, and desired JSON output structure (season, palettes, advice sections). // Using placeholder colors
     - [x] Handle LLM API call, including potential streaming and error handling. // Basic call implemented
@@ -89,7 +89,7 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 - [x] **Result Storage & Cleanup**
   - [x] Store the validated LLM analysis result (JSONB) in the Supabase `analyses` table using Drizzle, linked to the unique UUID.
   - [x] Update session status to `analysis_complete` and link `analysisId`.
-  - [ ] Implement robust deletion of all temporary data (image file, questionnaire answers, session data) after successful storage. // Placeholder exists
+  <!-- - [ ] Implement robust deletion of all temporary data (image file, questionnaire answers, session data) after successful storage.  -->
 - [x] **Result Retrieval**
   - [x] API endpoint `GET /api/v1/analysis/[analysisId]` to retrieve analysis results.
   - [x] Query Supabase/Drizzle using the provided UUID.

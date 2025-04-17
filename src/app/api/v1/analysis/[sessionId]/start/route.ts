@@ -4,12 +4,26 @@ import { sessions, analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateUUID } from "@/lib/utils";
 import { AnalysisResult, generateAnalysis } from "@/lib/ai";
+import { extractFacialColors } from "@/lib/image-analysis";
 import {
-  extractSkinAndEyeColors,
   StoredLandmarks,
   ExtractedColors,
-} from "@/lib/image-analysis";
+} from "@/lib/types/image-analysis.types";
 // import { del } from '@vercel/blob'; // Uncomment if cleanup needed
+
+// Define a more specific type for questionnaire data if possible
+// Example structure - adjust based on actual questionnaire fields
+interface QuestionnaireData {
+  gender?: string | null;
+  age?: number | null;
+  naturalHairColor?: string | null;
+  sunReaction?: string | null;
+  veinColor?: string | null;
+  jewelryPreference?: string | null;
+  flatteringColors?: string[] | string | null; // Allow string if free text
+  unflatteringColors?: string[] | string | null;
+  // Add other fields as necessary
+}
 
 interface RouteParams {
   params: {
@@ -119,7 +133,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // --- 3a. Download Image ---
       console.log(`   - Downloading image from: ${session.imageBlobUrl}`);
-      const imageResponse = await fetch(session.imageBlobUrl);
+      const imageResponse = await fetch(session.imageBlobUrl as string);
       if (!imageResponse.ok) {
         throw new Error(
           `Failed to download image: ${imageResponse.statusText}`
@@ -129,23 +143,36 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const imageBuffer = Buffer.from(imageArrayBuffer);
       console.log(`   - Image downloaded successfully.`);
 
-      // --- 3b. Image Processing (Color Extraction) ---
+      // --- 3b. Image Processing (Facial Color Extraction) ---
       const landmarks = session.faceLandmarks as StoredLandmarks;
-      const extractedColors: ExtractedColors = await extractSkinAndEyeColors(
+      // Call the renamed function
+      const extractedData: ExtractedColors = await extractFacialColors(
         imageBuffer,
         landmarks
       );
       console.log(
-        `   - Extracted colors for session ${sessionId}:`,
-        extractedColors
+        `   - Extracted facial data for session ${sessionId}:`,
+        extractedData // Log the whole object
       );
 
       // --- 3c. LLM Analysis ---
       console.log(`   - Calling LLM analysis...`);
+
+      // Safely cast questionnaireData after validation
+      const validatedQuestionnaireData =
+        session.questionnaireData as QuestionnaireData;
+
       analysisResult = await generateAnalysis({
-        extractedColors: extractedColors, // Pass actual extracted colors
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        questionnaireAnswers: session.questionnaireData as any,
+        extractedColors: {
+          skinColorHex: extractedData.skinColorHex,
+          averageEyeColorHex: extractedData.averageEyeColorHex,
+          skinUndertone: extractedData.skinUndertone,
+          averageEyebrowColorHex: extractedData.averageEyebrowColorHex, // Pass eyebrow color
+        },
+        questionnaireAnswers: validatedQuestionnaireData as Record<
+          string,
+          string | number | boolean
+        >,
       });
       console.log(`   - LLM analysis complete.`);
 

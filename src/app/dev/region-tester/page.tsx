@@ -140,6 +140,9 @@ export default function RegionTesterPage() {
       drawRegion(regionsToDraw.foreheadRegion);
       drawRegion(regionsToDraw.leftEyeRegion);
       drawRegion(regionsToDraw.rightEyeRegion);
+      // Add eyebrow regions
+      drawRegion(regionsToDraw.leftEyebrowRegion);
+      drawRegion(regionsToDraw.rightEyebrowRegion);
     }
   }, [imageUrl, imageDimensions, analysisResult]); // Add analysisResult to dependencies
 
@@ -216,6 +219,20 @@ export default function RegionTesterPage() {
                   ></div>
                   <span className="text-xs mt-1 block">
                     Eye: {analysisResult.colors.averageEyeColorHex ?? "N/A"}
+                  </span>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="w-16 h-16 rounded border border-border"
+                    style={{
+                      backgroundColor:
+                        analysisResult.colors.averageEyebrowColorHex ??
+                        "transparent",
+                    }}
+                  ></div>
+                  <span className="text-xs mt-1 block">
+                    Eyebrow:{" "}
+                    {analysisResult.colors.averageEyebrowColorHex ?? "N/A"}
                   </span>
                 </div>
               </div>

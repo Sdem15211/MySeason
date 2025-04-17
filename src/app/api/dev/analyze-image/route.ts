@@ -7,7 +7,7 @@ import {
   CalculatedRegions,
   ExtractedColors,
   calculateFaceRegions,
-  extractSkinAndEyeColors,
+  extractFacialColors,
   StoredLandmark,
 } from "@/lib/image-analysis";
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     );
 
     // 4. Extract Colors
-    const colors: ExtractedColors = await extractSkinAndEyeColors(
+    const colors: ExtractedColors = await extractFacialColors(
       imageBuffer,
       landmarks
     );

@@ -1,86 +1,32 @@
 import type sharp from "sharp";
-
-// --- Types ---
-
-// Simple landmark position interface
-interface IPosition {
-  x: number | null | undefined;
-  y: number | null | undefined;
-  z: number | null | undefined;
-}
-
-// Landmark type enum
-export enum LandmarkType {
-  LEFT_CHEEK_CENTER = 1,
-  RIGHT_CHEEK_CENTER = 2,
-  FOREHEAD_GLABELLA = 7,
-  LEFT_EYE_LEFT_CORNER = 17,
-  LEFT_EYE_RIGHT_CORNER = 18,
-  LEFT_EYE_TOP_BOUNDARY = 19,
-  LEFT_EYE_BOTTOM_BOUNDARY = 20,
-  RIGHT_EYE_LEFT_CORNER = 21,
-  RIGHT_EYE_RIGHT_CORNER = 22,
-  RIGHT_EYE_TOP_BOUNDARY = 23,
-  RIGHT_EYE_BOTTOM_BOUNDARY = 24,
-}
-
-type LandmarkTypeValue = (typeof LandmarkType)[keyof typeof LandmarkType];
-
-// Landmark structure received from API (simplified)
-export interface StoredLandmark {
-  type?: LandmarkTypeValue | string | null;
-  position?: IPosition | null;
-}
-export type StoredLandmarks = StoredLandmark[] | null | undefined;
-
-// Calculated regions needed for color extraction
-export type CalculatedRegions = {
-  leftCheekRegion: sharp.Region | null;
-  rightCheekRegion: sharp.Region | null;
-  foreheadRegion: sharp.Region | null;
-  leftEyeRegion: sharp.Region | null;
-  rightEyeRegion: sharp.Region | null;
-};
-
-// Final extracted colors
-export type ExtractedColors = {
-  skinColorHex: string | null;
-  averageEyeColorHex: string | null;
-};
-
-// RGB color type
-type RgbColor = { r: number; g: number; b: number };
+import convert from "color-convert";
+import {
+  StoredLandmark,
+  StoredLandmarks,
+  CalculatedRegions,
+  SkinUndertone,
+  ExtractedColors,
+  RgbColor,
+  VisionLandmarkTypeString,
+} from "./types/image-analysis.types";
 
 // --- Helper Functions ---
 
-// Finds a specific landmark from the list
+// Simplified: Finds a specific landmark from the list using case-insensitive string comparison
 const findLandmark = (
   landmarks: StoredLandmarks,
-  typeValue: LandmarkTypeValue
+  typeString: VisionLandmarkTypeString | string // Allow specific or general string
 ): StoredLandmark | undefined => {
-  if (!landmarks) return undefined;
+  if (!landmarks || !typeString) return undefined;
 
-  // Helper to get string name for comparison if type is stored as string
-  const getLandmarkStringName = (
-    value: LandmarkTypeValue
-  ): string | undefined => {
-    for (const key in LandmarkType) {
-      if (LandmarkType[key as keyof typeof LandmarkType] === value) {
-        return key;
-      }
-    }
-    return undefined;
-  };
-  const typeString = getLandmarkStringName(typeValue);
+  const upperTypeString = typeString.toUpperCase();
 
   return landmarks.find((lm) => {
-    if (typeof lm.type === "number") {
-      return lm.type === typeValue;
-    }
-    if (typeof lm.type === "string") {
-      return lm.type.toUpperCase() === typeString?.toUpperCase();
-    }
-    return false;
+    if (!lm || !lm.type) return false;
+    // Compare type property (assuming it's a string) case-insensitively
+    return (
+      typeof lm.type === "string" && lm.type.toUpperCase() === upperTypeString
+    );
   });
 };
 
@@ -109,6 +55,8 @@ const calculateRegion = (
     left + regionWidth > imageWidth ||
     top + regionHeight > imageHeight
   ) {
+    // Optional: Add logging here if a region is out of bounds
+    // console.warn(`Calculated region out of bounds: ${JSON.stringify({ left, top, width: regionWidth, height: regionHeight })} for image ${imageWidth}x${imageHeight}`);
     return null;
   }
 
@@ -136,7 +84,6 @@ const getAverageRgbColor = async (
   if (!region) return null;
 
   try {
-    // Ensure integer coords & dimensions >= 1 for sharp
     const intRegion: sharp.Region = {
       left: Math.round(region.left),
       top: Math.round(region.top),
@@ -144,31 +91,28 @@ const getAverageRgbColor = async (
       height: Math.max(1, Math.round(region.height)),
     };
 
-    // Dynamic import of sharp
     const { default: sharp } = await import("sharp");
-
-    // Create a new sharp instance for this specific region
-    // Extract the region first, then get stats on the extracted data
     const extractedBuffer = await sharp(imageBuffer)
       .extract(intRegion)
       .toBuffer();
 
-    // Create a new sharp instance with just the extracted region
     const stats = await sharp(extractedBuffer).toColorspace("srgb").stats();
-
     const channels = stats.channels;
 
-    // Log the actual channel data to help debug
-    console.log(`Region ${JSON.stringify(intRegion)} channels:`, channels);
+    // console.log(`Region ${JSON.stringify(intRegion)} channels:`, channels); // Keep logging minimal unless debugging
 
     if (channels && channels.length >= 3) {
-      // Handle both RGB and RGBA images correctly
       return {
         r: channels[0]?.mean ?? 0,
         g: channels[1]?.mean ?? 0,
         b: channels[2]?.mean ?? 0,
       };
     }
+    console.warn(
+      `Could not get valid channel data for region: ${JSON.stringify(
+        intRegion
+      )}`
+    );
     return null;
   } catch (error) {
     console.error(
@@ -179,9 +123,60 @@ const getAverageRgbColor = async (
   }
 };
 
+// --- Undertone Calculation ---
+const calculateUndertoneFromRgb = (
+  rgb: RgbColor | null
+): SkinUndertone | null => {
+  if (!rgb) return null;
+
+  try {
+    const clampedR = Math.max(0, Math.min(255, rgb.r));
+    const clampedG = Math.max(0, Math.min(255, rgb.g));
+    const clampedB = Math.max(0, Math.min(255, rgb.b));
+    const [l, a, b] = convert.rgb.lab([clampedR, clampedG, clampedB]);
+
+    // --- Simple Thresholding Logic (Example - Needs Tuning!) ---
+    const B_WARM_THRESHOLD = 15.0; // If b* is significantly positive (yellow)
+    const B_COOL_THRESHOLD = 5.0; // If b* is low (potentially bluish)
+    const A_NEUTRAL_MAX = 10.0; // How close a* needs to be to zero for neutral
+    const B_NEUTRAL_MAX = 10.0; // How close b* needs to be to zero for neutral
+    // Olive detection is harder, might look for greenish hints (lower 'a') with some yellow ('b')
+    const A_OLIVE_MAX = 5.0;
+    const B_OLIVE_MIN = 10.0;
+
+    if (b > B_WARM_THRESHOLD && a > -2) {
+      console.log("Undertone classified as: Warm");
+      return "Warm";
+    }
+    if (b < B_COOL_THRESHOLD && a > -5) {
+      console.log("Undertone classified as: Cool");
+      return "Cool";
+    }
+    if (a < A_OLIVE_MAX && b > B_OLIVE_MIN && b < B_WARM_THRESHOLD) {
+      console.log("Undertone classified as: Olive");
+      return "Olive";
+    }
+    if (Math.abs(a) < A_NEUTRAL_MAX && Math.abs(b) < B_NEUTRAL_MAX) {
+      console.log("Undertone classified as: Neutral");
+      return "Neutral";
+    }
+
+    console.warn(
+      "Could not determine a definitive undertone category based on thresholds.",
+      { l, a, b }
+    );
+    return "Undetermined";
+  } catch (error) {
+    console.error(
+      "Error converting RGB to Lab or calculating undertone:",
+      error
+    );
+    return null;
+  }
+};
+
 // --- Region Calculation Logic ---
 
-// Renamed from calculateAllRegions for clarity when exporting
 export function calculateFaceRegions(
   landmarks: StoredLandmarks,
   imageWidth: number,
@@ -200,6 +195,8 @@ export function calculateFaceRegions(
       foreheadRegion: null,
       leftEyeRegion: null,
       rightEyeRegion: null,
+      leftEyebrowRegion: null, // Added
+      rightEyebrowRegion: null, // Added
     };
   }
 
@@ -208,47 +205,42 @@ export function calculateFaceRegions(
     Math.round(Math.min(imageWidth, imageHeight) * 0.05)
   );
 
-  // Find necessary landmarks
-  const leftCheek = findLandmark(landmarks, LandmarkType.LEFT_CHEEK_CENTER);
-  const rightCheek = findLandmark(landmarks, LandmarkType.RIGHT_CHEEK_CENTER);
-  const foreheadGlabella = findLandmark(
-    landmarks,
-    LandmarkType.FOREHEAD_GLABELLA
-  );
-  const leftEyeLeftCorner = findLandmark(
-    landmarks,
-    LandmarkType.LEFT_EYE_LEFT_CORNER
-  );
-  const leftEyeRightCorner = findLandmark(
-    landmarks,
-    LandmarkType.LEFT_EYE_RIGHT_CORNER
-  );
-  const leftEyeTopBoundary = findLandmark(
-    landmarks,
-    LandmarkType.LEFT_EYE_TOP_BOUNDARY
-  );
+  // Find necessary landmarks (Skin) - Use standard API string types
+  const leftCheek = findLandmark(landmarks, "LEFT_CHEEK_CENTER");
+  const rightCheek = findLandmark(landmarks, "RIGHT_CHEEK_CENTER");
+  const foreheadGlabella = findLandmark(landmarks, "FOREHEAD_GLABELLA");
+
+  // Find necessary landmarks (Eyes) - Use standard API string types
+  const leftEyeLeftCorner = findLandmark(landmarks, "LEFT_EYE_LEFT_CORNER");
+  const leftEyeRightCorner = findLandmark(landmarks, "LEFT_EYE_RIGHT_CORNER");
+  const leftEyeTopBoundary = findLandmark(landmarks, "LEFT_EYE_TOP_BOUNDARY");
   const leftEyeBottomBoundary = findLandmark(
     landmarks,
-    LandmarkType.LEFT_EYE_BOTTOM_BOUNDARY
+    "LEFT_EYE_BOTTOM_BOUNDARY"
   );
-  const rightEyeLeftCorner = findLandmark(
-    landmarks,
-    LandmarkType.RIGHT_EYE_LEFT_CORNER
-  );
-  const rightEyeRightCorner = findLandmark(
-    landmarks,
-    LandmarkType.RIGHT_EYE_RIGHT_CORNER
-  );
-  const rightEyeTopBoundary = findLandmark(
-    landmarks,
-    LandmarkType.RIGHT_EYE_TOP_BOUNDARY
-  );
+  const rightEyeLeftCorner = findLandmark(landmarks, "RIGHT_EYE_LEFT_CORNER");
+  const rightEyeRightCorner = findLandmark(landmarks, "RIGHT_EYE_RIGHT_CORNER");
+  const rightEyeTopBoundary = findLandmark(landmarks, "RIGHT_EYE_TOP_BOUNDARY");
   const rightEyeBottomBoundary = findLandmark(
     landmarks,
-    LandmarkType.RIGHT_EYE_BOTTOM_BOUNDARY
+    "RIGHT_EYE_BOTTOM_BOUNDARY"
   );
 
-  // Calculate skin regions
+  // Find necessary landmarks (Eyebrows) - Use standard API string types
+  const leftOfLeftEyebrow = findLandmark(landmarks, "LEFT_OF_LEFT_EYEBROW");
+  const rightOfLeftEyebrow = findLandmark(landmarks, "RIGHT_OF_LEFT_EYEBROW");
+  const leftEyebrowUpperMidpoint = findLandmark(
+    landmarks,
+    "LEFT_EYEBROW_UPPER_MIDPOINT"
+  );
+  const leftOfRightEyebrow = findLandmark(landmarks, "LEFT_OF_RIGHT_EYEBROW");
+  const rightOfRightEyebrow = findLandmark(landmarks, "RIGHT_OF_RIGHT_EYEBROW");
+  const rightEyebrowUpperMidpoint = findLandmark(
+    landmarks,
+    "RIGHT_EYEBROW_UPPER_MIDPOINT"
+  );
+
+  // --- Calculate Skin Regions --- Original logic restored
   const leftCheekRegion = calculateRegion(
     leftCheek?.position?.x,
     leftCheek?.position?.y,
@@ -265,7 +257,6 @@ export function calculateFaceRegions(
     imageWidth,
     imageHeight
   );
-
   let foreheadRegion: sharp.Region | null = null;
   if (
     foreheadGlabella?.position?.x != null &&
@@ -273,6 +264,7 @@ export function calculateFaceRegions(
   ) {
     const centerX = foreheadGlabella.position.x;
     const centerY = foreheadGlabella.position.y;
+    // Original Shift
     const verticalShift = baseRegionSize * 2;
     const shiftedCenterY = centerY - verticalShift;
     foreheadRegion = calculateRegion(
@@ -285,7 +277,7 @@ export function calculateFaceRegions(
     );
   }
 
-  // Calculate eye regions
+  // --- Calculate Eye Regions --- Original logic restored
   const eyeRegionSize = Math.max(4, Math.round(baseRegionSize * 0.3));
   const eyeHorizontalShift = Math.round(eyeRegionSize * 0.5);
 
@@ -300,6 +292,7 @@ export function calculateFaceRegions(
       (leftEyeLeftCorner.position.x + leftEyeRightCorner.position.x) / 2;
     const centerY =
       (leftEyeTopBoundary.position.y + leftEyeBottomBoundary.position.y) / 2;
+    // Original shift
     const shiftedCenterX = centerX - eyeHorizontalShift;
     leftEyeRegion = calculateRegion(
       shiftedCenterX,
@@ -322,6 +315,7 @@ export function calculateFaceRegions(
       (rightEyeLeftCorner.position.x + rightEyeRightCorner.position.x) / 2;
     const centerY =
       (rightEyeTopBoundary.position.y + rightEyeBottomBoundary.position.y) / 2;
+    // Original shift
     const shiftedCenterX = centerX + eyeHorizontalShift;
     rightEyeRegion = calculateRegion(
       shiftedCenterX,
@@ -333,18 +327,68 @@ export function calculateFaceRegions(
     );
   }
 
+  // --- Calculate Eyebrow Regions --- Added
+  const eyebrowRegionWidth = Math.max(6, Math.round(baseRegionSize * 0.6));
+  const eyebrowRegionHeight = Math.max(3, Math.round(baseRegionSize * 0.2));
+
+  let leftEyebrowRegion: sharp.Region | null = null;
+  if (
+    leftOfLeftEyebrow?.position?.x != null &&
+    rightOfLeftEyebrow?.position?.x != null &&
+    leftEyebrowUpperMidpoint?.position?.y != null
+  ) {
+    const centerX =
+      (leftOfLeftEyebrow.position.x + rightOfLeftEyebrow.position.x) / 2;
+    const centerY = leftEyebrowUpperMidpoint.position.y;
+    const eyebrowVerticalShift = Math.round(eyebrowRegionHeight * 1); // Shift down slightly from upper midpoint
+    const shiftedCenterY = centerY + eyebrowVerticalShift;
+
+    leftEyebrowRegion = calculateRegion(
+      centerX,
+      shiftedCenterY,
+      eyebrowRegionWidth,
+      eyebrowRegionHeight,
+      imageWidth,
+      imageHeight
+    );
+  }
+
+  let rightEyebrowRegion: sharp.Region | null = null;
+  if (
+    leftOfRightEyebrow?.position?.x != null &&
+    rightOfRightEyebrow?.position?.x != null &&
+    rightEyebrowUpperMidpoint?.position?.y != null
+  ) {
+    const centerX =
+      (leftOfRightEyebrow.position.x + rightOfRightEyebrow.position.x) / 2;
+    const centerY = rightEyebrowUpperMidpoint.position.y;
+    const eyebrowVerticalShift = Math.round(eyebrowRegionHeight * 1);
+    const shiftedCenterY = centerY + eyebrowVerticalShift;
+
+    rightEyebrowRegion = calculateRegion(
+      centerX,
+      shiftedCenterY,
+      eyebrowRegionWidth,
+      eyebrowRegionHeight,
+      imageWidth,
+      imageHeight
+    );
+  }
+
   return {
     leftCheekRegion,
     rightCheekRegion,
     foreheadRegion,
     leftEyeRegion,
     rightEyeRegion,
+    leftEyebrowRegion, // Added
+    rightEyebrowRegion, // Added
   };
 }
 
-// --- Main Color Extraction Function ---
+// --- Main Color Extraction Function (Renamed) ---
 
-export const extractSkinAndEyeColors = async (
+export const extractFacialColors = async (
   imageBuffer: Buffer,
   landmarks: StoredLandmarks
 ): Promise<ExtractedColors> => {
@@ -365,39 +409,36 @@ export const extractSkinAndEyeColors = async (
     throw new Error("Could not determine image dimensions from metadata.");
   }
 
-  // Calculate regions
+  // Calculate all necessary regions
   const regions = calculateFaceRegions(landmarks, imageWidth, imageHeight);
 
-  // --- BEGIN ADDED LOGGING ---
-  console.log("Calculated Regions:", {
-    leftCheekRegion: regions.leftCheekRegion,
-    rightCheekRegion: regions.rightCheekRegion,
-    foreheadRegion: regions.foreheadRegion,
-    leftEyeRegion: regions.leftEyeRegion,
-    rightEyeRegion: regions.rightEyeRegion,
-  });
-  // --- END ADDED LOGGING ---
+  // console.log("Calculated Regions:", regions); // Keep logging minimal
 
-  // Extract colors in parallel
-  const [leftCheekRgb, rightCheekRgb, foreheadRgb, leftEyeRgb, rightEyeRgb] =
-    await Promise.all([
-      getAverageRgbColor(imageBuffer, regions.leftCheekRegion),
-      getAverageRgbColor(imageBuffer, regions.rightCheekRegion),
-      getAverageRgbColor(imageBuffer, regions.foreheadRegion),
-      getAverageRgbColor(imageBuffer, regions.leftEyeRegion),
-      getAverageRgbColor(imageBuffer, regions.rightEyeRegion),
-    ]);
-
-  // Log extracted RGB values
-  console.log("Extracted RGB values:", {
+  // Extract colors in parallel for all regions
+  const [
     leftCheekRgb,
     rightCheekRgb,
     foreheadRgb,
     leftEyeRgb,
     rightEyeRgb,
-  });
+    leftEyebrowRgb, // Added
+    rightEyebrowRgb, // Added
+  ] = await Promise.all([
+    getAverageRgbColor(imageBuffer, regions.leftCheekRegion),
+    getAverageRgbColor(imageBuffer, regions.rightCheekRegion),
+    getAverageRgbColor(imageBuffer, regions.foreheadRegion),
+    getAverageRgbColor(imageBuffer, regions.leftEyeRegion),
+    getAverageRgbColor(imageBuffer, regions.rightEyeRegion),
+    getAverageRgbColor(imageBuffer, regions.leftEyebrowRegion), // Added
+    getAverageRgbColor(imageBuffer, regions.rightEyebrowRegion), // Added
+  ]);
 
-  // Combine skin colors
+  // Log extracted RGB values (Optional for debugging)
+  // console.log("Extracted RGB values:", {
+  //   leftCheekRgb, rightCheekRgb, foreheadRgb, leftEyeRgb, rightEyeRgb, leftEyebrowRgb, rightEyebrowRgb
+  // });
+
+  // --- Combine Skin Colors --- Original logic restored
   const availableSkinRgbs = [leftCheekRgb, rightCheekRgb, foreheadRgb].filter(
     (rgb): rgb is RgbColor => rgb !== null
   );
@@ -413,7 +454,7 @@ export const extractSkinAndEyeColors = async (
     };
   }
 
-  // Combine eye colors
+  // --- Combine Eye Colors --- Original logic restored
   let finalEyeRgb: RgbColor | null = null;
   if (leftEyeRgb && rightEyeRgb) {
     finalEyeRgb = {
@@ -425,23 +466,50 @@ export const extractSkinAndEyeColors = async (
     finalEyeRgb = leftEyeRgb ?? rightEyeRgb;
   }
 
-  // Log final RGB values
-  console.log("Final RGB values:", {
-    skin: finalSkinRgb,
-    eye: finalEyeRgb,
-  });
+  // --- Combine Eyebrow Colors --- Added & Linter Fixed
+  let finalEyebrowRgb: RgbColor | null = null;
+  const availableEyebrowRgbs = [leftEyebrowRgb, rightEyebrowRgb].filter(
+    (rgb): rgb is RgbColor => rgb !== null
+  );
+  if (availableEyebrowRgbs.length === 2) {
+    // Both eyebrows detected
+    finalEyebrowRgb = {
+      r: (availableEyebrowRgbs[0]!.r + availableEyebrowRgbs[1]!.r) / 2,
+      g: (availableEyebrowRgbs[0]!.g + availableEyebrowRgbs[1]!.g) / 2,
+      b: (availableEyebrowRgbs[0]!.b + availableEyebrowRgbs[1]!.b) / 2,
+    };
+  } else if (availableEyebrowRgbs.length === 1) {
+    // Only one eyebrow detected
+    finalEyebrowRgb = availableEyebrowRgbs[0]!;
+  }
+  // If length is 0, finalEyebrowRgb remains null
 
+  // Log final RGB values (Optional for debugging)
+  // console.log("Final RGB values:", {
+  //   skin: finalSkinRgb,
+  //   eye: finalEyeRgb,
+  //   eyebrow: finalEyebrowRgb,
+  // });
+
+  // Calculate Undertone
+  const skinUndertone = calculateUndertoneFromRgb(finalSkinRgb);
+
+  // Convert final RGBs to Hex
   const skinColorHex = rgbToHex(finalSkinRgb);
   const averageEyeColorHex = rgbToHex(finalEyeRgb);
+  const averageEyebrowColorHex = rgbToHex(finalEyebrowRgb); // Added
 
-  // Log final hex values
-  console.log("Final hex values:", {
-    skin: skinColorHex,
-    eye: averageEyeColorHex,
-  });
+  // Log final hex values (Optional for debugging)
+  // console.log("Final hex values:", {
+  //   skin: skinColorHex,
+  //   eye: averageEyeColorHex,
+  //   eyebrow: averageEyebrowColorHex,
+  // });
 
   return {
     skinColorHex,
     averageEyeColorHex,
+    skinUndertone,
+    averageEyebrowColorHex, // Added
   };
 };
