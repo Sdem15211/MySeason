@@ -145,6 +145,9 @@ export default function RegionTesterPage() {
       // Add eyebrow regions
       drawRegion(regionsToDraw.leftEyebrowRegion);
       drawRegion(regionsToDraw.rightEyebrowRegion);
+      // Add lip regions
+      drawRegion(regionsToDraw.upperLipRegion);
+      drawRegion(regionsToDraw.lowerLipRegion);
     }
   }, [imageUrl, imageDimensions, analysisResult]); // Add analysisResult to dependencies
 
@@ -239,6 +242,20 @@ export default function RegionTesterPage() {
                     <span className="text-xs mt-1 block">
                       Eyebrow:{" "}
                       {analysisResult.colors.averageEyebrowColorHex ?? "N/A"}
+                    </span>
+                  </div>
+                  {/* Added Lip Color Swatch */}
+                  <div className="text-center">
+                    <div
+                      className="w-16 h-16 rounded border border-border"
+                      style={{
+                        backgroundColor:
+                          analysisResult.colors.averageLipColorHex ??
+                          "transparent",
+                      }}
+                    ></div>
+                    <span className="text-xs mt-1 block">
+                      Lip: {analysisResult.colors.averageLipColorHex ?? "N/A"}
                     </span>
                   </div>
                 </div>

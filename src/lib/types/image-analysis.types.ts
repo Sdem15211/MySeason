@@ -65,6 +65,8 @@ export type CalculatedRegions = {
   rightEyeRegion: sharp.Region | null;
   leftEyebrowRegion: sharp.Region | null;
   rightEyebrowRegion: sharp.Region | null;
+  upperLipRegion: sharp.Region | null;
+  lowerLipRegion: sharp.Region | null;
 };
 
 // Possible undertone categories
@@ -82,6 +84,7 @@ export type ExtractedColors = {
   skinUndertone: SkinUndertone | null;
   skinColorLab?: { l: number; a: number; b: number } | null; // Added for debugging
   averageEyebrowColorHex: string | null;
+  averageLipColorHex: string | null;
 };
 
 // RGB color type

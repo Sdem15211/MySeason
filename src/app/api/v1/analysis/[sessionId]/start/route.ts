@@ -187,10 +187,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         overallCategory = "Low";
       }
 
-      // Prepare the \'extractedColors\' part for the LLM Input, including contrast
+      // Prepare the 'extractedColors' part for the LLM Input, including contrast
       const llmExtractedColors = {
         // Spread the base data, excluding the LAB objects we need to remap
         skinColorHex: extractedColorData.skinColorHex,
+        averageEyeColorHex: extractedColorData.averageEyeColorHex,
+        averageEyebrowColorHex: extractedColorData.averageEyebrowColorHex,
+        averageLipColorHex: extractedColorData.averageLipColorHex,
         // Remap LAB values to use uppercase keys L, A, B
         skinColorLAB: extractedColorData.skinColorLab
           ? {
@@ -199,7 +202,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               B: extractedColorData.skinColorLab.b,
             }
           : null,
-        averageEyeColorHex: extractedColorData.averageEyeColorHex,
         // Add contrast data
         contrast: {
           skinEyeRatio,
@@ -207,8 +209,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           eyeHairRatio,
           overall: overallCategory,
         },
-        // Pass calculatedUndertone if available
-        // calculatedUndertone: extractedColorData.calculatedUndertone || null,
+        // Pass calculatedUndertone from ExtractedColors
+        calculatedUndertone: extractedColorData.skinUndertone || null,
       };
 
       // Prepare the complete LLM input object
@@ -226,11 +228,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.log(`   - Storing analysis result and input data in database...`);
       const newAnalysisId = generateUUID();
 
-      // Prepare the data TO BE STORED (using StoredInputData structure)
+      // Prepare the data TO BE STORED (using updated StoredInputData structure)
       const inputDataForStorage: StoredInputData = {
         extractedFeatures: {
           ...extractedColorData,
           contrast: llmExtractedColors.contrast,
+          calculatedUndertone: extractedColorData.skinUndertone || undefined,
         },
         questionnaireData: validatedQuestionnaireData,
       };

@@ -3,12 +3,25 @@ import { analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-
-import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CopyButton } from "@/components/features/analysis/copy-button"; // Assume this component exists or create later
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { CopyButton } from "@/components/features/analysis/copy-button";
+import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema"; // Updated schema import
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
-import { QuestionnaireFormData } from "@/lib/schemas/questionnaire"; // Assuming this exists
+import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
+import { AlertCircle, Info, Palette, Sparkles, XCircle } from "lucide-react"; // Import icons
 
 interface AnalysisResultsPageProps {
   params: {
@@ -16,29 +29,52 @@ interface AnalysisResultsPageProps {
   };
 }
 
-// Optional: Generate dynamic metadata
 export async function generateMetadata({
   params,
 }: AnalysisResultsPageProps): Promise<Metadata> {
-  // You could fetch the analysis season name here for the title
-  return {
-    title: `Analysis Results - ${(await params).analysisId}`,
-  };
+  const analysisId = (await params).analysisId;
+  // Fetch analysis for title - basic error handling
+  try {
+    const analysisResults = await db
+      .select({ result: analyses.result })
+      .from(analyses)
+      .where(eq(analyses.id, analysisId))
+      .limit(1);
+    // Cast the result to ensure TS knows the shape
+    const resultData = analysisResults[0]
+      ?.result as Partial<AnalysisOutput> | null;
+    const season = resultData?.season || "Your";
+    return {
+      title: `${season} Season - Color Analysis Results`,
+    };
+  } catch {
+    return { title: `Analysis Results - ${analysisId}` };
+  }
 }
 
-// Helper component for rendering color swatches (placeholder)
-const ColorSwatch = ({ color, label }: { color: string; label?: string }) => (
-  <div className="inline-flex items-center mr-4 mb-2">
+// Helper component for rendering color swatches
+const ColorSwatch = ({
+  hex,
+  name,
+  className,
+}: {
+  hex: string;
+  name?: string;
+  className?: string;
+}) => (
+  <div
+    className={`inline-flex items-center mr-3 mb-2 p-1 pr-3 rounded-full border bg-secondary/30 ${className}`}
+  >
     <div
-      className="w-8 h-8 rounded border border-muted mr-2 align-middle"
-      style={{ backgroundColor: color }}
-      title={color}
+      className="w-6 h-6 rounded-full border border-muted mr-2 shadow-inner"
+      style={{ backgroundColor: hex }}
+      title={`${name || "Color"} (${hex})`}
     />
-    {label && <span className="text-sm text-muted-foreground">{label}</span>}
+    {name && <span className="text-xs font-medium">{name}</span>}
   </div>
 );
 
-// Updated interface to match the structure stored in the database (from API route)
+// Interface for input data stored in DB (keep as is for now)
 interface StoredInputData {
   extractedFeatures: ExtractedColors & {
     contrast?: {
@@ -52,6 +88,11 @@ interface StoredInputData {
   questionnaireData: QuestionnaireFormData;
 }
 
+// Component to render explanation tooltips/collapsibles (Placeholder)
+const Explanation = ({ text }: { text: string }) => (
+  <p className="text-xs text-muted-foreground italic mt-1">({text})</p>
+);
+
 export default async function AnalysisResultsPage({
   params,
 }: AnalysisResultsPageProps) {
@@ -64,7 +105,6 @@ export default async function AnalysisResultsPage({
 
   let analysisRecord;
   try {
-    // Fetch analysis result AND input data
     const analysisResults = await db
       .select({
         id: analyses.id,
@@ -89,253 +129,353 @@ export default async function AnalysisResultsPage({
       `AnalysisResultsPage: Database error fetching data for analysis ${analysisId}:`,
       error
     );
-    // Render an error message or use an Error component
     return (
       <div className="container mx-auto px-4 py-8 text-center text-destructive">
+        <AlertCircle className="inline-block mr-2" />
         Error loading analysis results. Please try again later.
       </div>
     );
   }
 
   if (!analysisRecord?.result || !analysisRecord?.inputData) {
-    console.log(
-      `AnalysisResultsPage: Analysis result or input data missing for ID: ${analysisId}`
-    );
+    // Added check for null result object
+    if (!analysisRecord?.result) {
+      console.log(
+        `AnalysisResultsPage: Analysis result is null or missing for ID: ${analysisId}`
+      );
+      // Potentially show a "processing" state if applicable, or just not found
+    } else {
+      console.log(
+        `AnalysisResultsPage: Input data missing for ID: ${analysisId}`
+      );
+    }
     notFound();
   }
 
-  // Use the correct type for the result
+  // *** Use the updated AnalysisOutput type ***
   const result = analysisRecord.result as AnalysisOutput;
 
-  // Use the updated interface (add Zod validation later for robustness)
+  // Input data remains the same structure for now
   const inputData = analysisRecord.inputData as StoredInputData;
   const extractedFeatures = inputData.extractedFeatures ?? {};
   const questionnaireData = inputData.questionnaireData ?? {};
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-4xl">
-      <h1 className="text-4xl font-bold mb-4 text-center">
-        Your Personal Color Analysis
-      </h1>
-      <p className="text-center text-muted-foreground mb-8">
-        Analysis ID: {analysisRecord.id}{" "}
-        <CopyButton textToCopy={analysisRecord.id} />
-      </p>
+    <div className="container mx-auto px-4 py-12 max-w-4xl space-y-8">
+      {/* Header Section */}
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-2">
+          Your Personal Color Analysis
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Analysis ID: {analysisRecord.id}{" "}
+          <CopyButton textToCopy={analysisRecord.id} />
+        </p>
+      </div>
 
-      {/* Season Result */}
-      <Card className="mb-6 bg-gradient-to-r from-primary/10 to-background">
+      {/* Season Title & Characterization */}
+      <Card className="bg-gradient-to-br from-primary/10 via-background to-background border-primary/30 shadow-lg">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-semibold text-primary">
+            {result.season}
+          </CardTitle>
+          <CardDescription className="text-lg text-foreground/80 pt-1">
+            {result.seasonCharacterization}
+          </CardDescription>
+        </CardHeader>
+        {/* Optionally keep a brief season explanation here if needed */}
+        <CardContent className="text-center text-sm text-muted-foreground">
+          <Explanation text={result.seasonExplanation} />
+        </CardContent>
+      </Card>
+
+      {/* Core Analysis Details */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-semibold text-center text-primary">
-            Your Season: {result.season}
+          <CardTitle className="flex items-center gap-2">
+            <Info size={20} /> Analysis Breakdown
           </CardTitle>
         </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <p>
+            <strong>Undertone:</strong> {result.undertone}
+            <Explanation text={result.undertoneExplanation} />
+          </p>
+          <p>
+            <strong>Contrast Level:</strong> {result.contrastLevel}
+            <Explanation text={result.contrastLevelExplanation} />
+          </p>
+          <p>
+            <strong>Overall Vibe:</strong> {result.overallVibe}
+          </p>
+        </CardContent>
       </Card>
 
       {/* Color Palettes */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Your Color Palettes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Wow Colors</h3>
-            {result.personalPalette.wowColors.map(({ name, hex }) => (
-              <ColorSwatch key={`wow-${hex}`} color={hex} label={name} />
-            ))}
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Best Neutrals</h3>
-            {result.personalPalette.bestNeutrals.map(({ name, hex }) => (
-              <ColorSwatch key={`neutral-${hex}`} color={hex} label={name} />
-            ))}
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Accent Colors</h3>
-            {result.personalPalette.accentColors.map(({ name, hex }) => (
-              <ColorSwatch key={`accent-${hex}`} color={hex} label={name} />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Explanations Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Analysis Details & Explanations</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <div>
-            <p>
-              <strong>Season:</strong> {result.season} -{" "}
-              <em>{result.seasonExplanation}</em>
-            </p>
-          </div>
-          <div>
-            <p>
-              <strong>Undertone:</strong> {result.undertone} -{" "}
-              <em>{result.undertoneExplanation}</em>
-            </p>
-          </div>
-          <div>
-            <p>
-              <strong>Contrast Level:</strong> {result.contrastLevel} -{" "}
-              <em>{result.contrastLevelExplanation}</em>
-            </p>
-          </div>
-          <div>
-            <p>
-              <strong>Palette Rationale:</strong>{" "}
-              <em>{result.paletteExplanation}</em>
-            </p>
-          </div>
-          <div>
-            <h3 className="text-md font-semibold mb-1 text-foreground">
-              Colors to Minimize
-            </h3>
-            <div className="mb-2">
-              {result.colorsToMinimize.map(({ name, hex }) => (
-                <ColorSwatch key={`minimize-${hex}`} color={hex} label={name} />
-              ))}
-            </div>
-            <p>
-              <em>{result.colorsToMinimizeExplanation}</em>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Input Data (Debug Section) - Updated to use extractedFeatures fields */}
-      <Card className="mb-6 border-dashed border-amber-500">
-        <CardHeader>
-          <CardTitle className="text-amber-600">Input Data (Debug)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold mb-2 text-muted-foreground">
-              Extracted Features
-            </h3>
-            {extractedFeatures?.skinColorHex ? (
-              <ColorSwatch
-                color={extractedFeatures.skinColorHex}
-                label="Skin"
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Skin Color: Not Available
-              </p>
-            )}
-            {extractedFeatures?.averageEyeColorHex ? (
-              <ColorSwatch
-                color={extractedFeatures.averageEyeColorHex}
-                label="Eye"
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Eye Color: Not Available
-              </p>
-            )}
-            {/* Display calculatedUndertone if present */}
-            {extractedFeatures?.calculatedUndertone ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Calculated Undertone (Input):{" "}
-                {extractedFeatures.calculatedUndertone}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-2">
-                Undertone: Not Available
-              </p>
-            )}
-            {/* Display Contrast Ratios if available */}
-            {extractedFeatures?.contrast && (
-              <div className="mt-2 text-xs text-muted-foreground">
-                Contrast (Skin/Eye:{" "}
-                {extractedFeatures.contrast.skinEyeRatio?.toFixed(2) ?? "N/A"},
-                Skin/Hair:{" "}
-                {extractedFeatures.contrast.skinHairRatio?.toFixed(2) ?? "N/A"},
-                Eye/Hair:{" "}
-                {extractedFeatures.contrast.eyeHairRatio?.toFixed(2) ?? "N/A"},
-                Overall: {extractedFeatures.contrast.overall ?? "N/A"})
-              </div>
-            )}
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-2 text-muted-foreground">
-              Questionnaire Data
-            </h3>
-            {questionnaireData?.naturalHairColor ? (
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Natural Hair Color:{" "}
-                </p>
-                <ColorSwatch color={questionnaireData.naturalHairColor} />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Natural Hair Color: Not Provided
-              </p>
-            )}
-            {/* Add other questionnaire fields here if needed */}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Detailed Advice */}
       <Card>
         <CardHeader>
-          <CardTitle>Personalized Advice</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Palette size={20} /> Your Color Palette
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="prose prose-lg max-w-none dark:prose-invert">
-            <h3 className="font-semibold">Overall Vibe</h3>
-            <p>{result.overallVibe}</p>
-
-            <h3 className="font-semibold">Style & Combining Advice</h3>
-            <p>{result.styleAndCombiningAdvice}</p>
-            <p className="text-sm">
-              (<em>{result.styleAndCombiningExplanation}</em>)
-            </p>
-
-            <h3 className="font-semibold">Hair Color Guidance</h3>
-            <p>{result.hairColorGuidance}</p>
-            <p className="text-sm">
-              (<em>{result.hairColorExplanation}</em>)
-            </p>
-
-            <h3 className="font-semibold">Best Metal Tones</h3>
-            <p>{result.bestMetalTones.join(", ")}</p>
-            <p className="text-sm">
-              (<em>{result.metalTonesExplanation}</em>)
-            </p>
-
-            {/* Conditionally render Makeup section */}
-            {result.makeupRecommendations && (
-              <>
-                <h3 className="font-semibold">Makeup Recommendations</h3>
-                <p>
-                  <strong>Foundation:</strong>{" "}
-                  {result.makeupRecommendations.foundationFocus}
-                </p>
-                <p>
-                  <strong>Blush:</strong>{" "}
-                  {result.makeupRecommendations.blushFamilies.join(", ")}
-                </p>
-                <p>
-                  <strong>Lipstick:</strong>{" "}
-                  {result.makeupRecommendations.lipstickFamilies.join(", ")}
-                </p>
-                <p>
-                  <strong>Eyeshadow:</strong>{" "}
-                  {result.makeupRecommendations.eyeshadowTones.join(", ")}
-                </p>
-                <p className="text-sm">
-                  (<em>{result.makeupRecommendations.makeupExplanation}</em>)
-                </p>
-              </>
-            )}
+        <CardContent className="space-y-4">
+          <div>
+            <h3 className="text-md font-semibold mb-3 text-primary">
+              Power Colors
+            </h3>
+            {result.personalPalette.powerColors.map(({ name, hex }) => (
+              <ColorSwatch key={`power-${hex}`} hex={hex} name={name} />
+            ))}
           </div>
+
+          {/* Optional: Additional Compatible Colors */}
+          {result.personalPalette.additionalCompatibleColors &&
+            result.personalPalette.additionalCompatibleColors.length > 0 && (
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem
+                  value="additional-colors"
+                  className="border-none"
+                >
+                  <AccordionTrigger className="text-sm font-medium text-muted-foreground hover:no-underline pt-0">
+                    Show Additional Compatible Colors...
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-3">
+                    {result.personalPalette.additionalCompatibleColors.map(
+                      ({ name, hex }) => (
+                        <ColorSwatch
+                          key={`additional-${hex}`}
+                          hex={hex}
+                          name={name}
+                        />
+                      )
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
         </CardContent>
       </Card>
 
+      {/* Colors to Avoid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <XCircle size={20} /> Colors to Avoid
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            {result.colorsToAvoid.map(({ color, explanation }, index) => (
+              <AccordionItem key={`avoid-${index}`} value={`item-${index}`}>
+                <AccordionTrigger className="hover:no-underline">
+                  <ColorSwatch hex={color.hex} name={color.name} />
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground pl-4 border-l-2 border-border ml-2">
+                  <strong>Why?</strong> {explanation}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      {/* Metal Recommendation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles size={20} /> Metal Recommendation
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-lg font-medium">{result.primaryMetal}</p>
+          <Explanation text={result.metalTonesExplanation} />
+        </CardContent>
+      </Card>
+
+      {/* Hair Color Guidance */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hair Color Guidance</CardTitle>
+        </CardHeader>
+        <CardContent className="prose prose-sm max-w-none dark:prose-invert text-foreground">
+          {/* Assume result.hairColorGuidance is pre-formatted with line breaks or paragraphs */}
+          <div
+            dangerouslySetInnerHTML={{
+              __html: result.hairColorGuidance.replace(
+                new RegExp("\\n", "g"),
+                "<br />"
+              ),
+            }}
+          />
+          <Explanation text={result.hairColorExplanation} />
+        </CardContent>
+      </Card>
+
+      {/* Style Scenarios */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Style Scenarios</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="professional" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="professional">Professional</TabsTrigger>
+              <TabsTrigger value="elegant">Elegant</TabsTrigger>
+              <TabsTrigger value="casual">Casual</TabsTrigger>
+            </TabsList>
+            <TabsContent
+              value="professional"
+              className="pt-4 prose prose-sm max-w-none dark:prose-invert text-foreground"
+            >
+              <p>{result.styleScenarios.professional.colorCombinationAdvice}</p>
+              {result.styleScenarios.professional.patternGuidance && (
+                <p className="text-xs text-muted-foreground">
+                  (Pattern Tip:{" "}
+                  {result.styleScenarios.professional.patternGuidance})
+                </p>
+              )}
+            </TabsContent>
+            <TabsContent
+              value="elegant"
+              className="pt-4 prose prose-sm max-w-none dark:prose-invert text-foreground"
+            >
+              <p>{result.styleScenarios.elegant.colorCombinationAdvice}</p>
+              {result.styleScenarios.elegant.patternGuidance && (
+                <p className="text-xs text-muted-foreground">
+                  (Pattern Tip: {result.styleScenarios.elegant.patternGuidance})
+                </p>
+              )}
+            </TabsContent>
+            <TabsContent
+              value="casual"
+              className="pt-4 prose prose-sm max-w-none dark:prose-invert text-foreground"
+            >
+              <p>{result.styleScenarios.casual.colorCombinationAdvice}</p>
+              {result.styleScenarios.casual.patternGuidance && (
+                <p className="text-xs text-muted-foreground">
+                  (Pattern Tip: {result.styleScenarios.casual.patternGuidance})
+                </p>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Makeup Recommendations (Conditional) */}
+      {result.makeupRecommendations && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Makeup Recommendations</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>
+              <strong>Foundation Undertone:</strong>{" "}
+              {result.makeupRecommendations.foundationUndertoneGuidance}
+            </p>
+            <p>
+              <strong>Blush:</strong>{" "}
+              {result.makeupRecommendations.blushRecommendation}
+            </p>
+            <p>
+              <strong>Lip Colors:</strong>{" "}
+              {result.makeupRecommendations.complementaryLipColors.join(", ")}
+            </p>
+            <p>
+              <strong>Eye Colors:</strong>{" "}
+              {result.makeupRecommendations.complementaryEyeColors.join(", ")}
+            </p>
+            <Explanation
+              text={result.makeupRecommendations.makeupExplanation}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Input Data (Debug Section - Keep as is for now) */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem
+          value="debug-info"
+          className="border rounded-lg px-4 bg-muted/30"
+        >
+          <AccordionTrigger className="text-sm font-medium text-amber-600 hover:no-underline">
+            Input Data (Debug Info)
+          </AccordionTrigger>
+          <AccordionContent className="pt-4 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2 text-muted-foreground">
+                Extracted Features
+              </h3>
+              {extractedFeatures?.skinColorHex ? (
+                <ColorSwatch hex={extractedFeatures.skinColorHex} name="Skin" />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Skin Color: Not Available
+                </p>
+              )}
+              {extractedFeatures?.averageEyeColorHex ? (
+                <ColorSwatch
+                  hex={extractedFeatures.averageEyeColorHex}
+                  name="Eye"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Eye Color: Not Available
+                </p>
+              )}
+              {extractedFeatures?.averageEyebrowColorHex && (
+                <ColorSwatch
+                  hex={extractedFeatures.averageEyebrowColorHex}
+                  name="Eyebrow"
+                />
+              )}
+              {extractedFeatures?.averageLipColorHex && (
+                <ColorSwatch
+                  hex={extractedFeatures.averageLipColorHex}
+                  name="Lip"
+                />
+              )}
+              {extractedFeatures?.calculatedUndertone && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Calculated Undertone (Input):{" "}
+                  {extractedFeatures.calculatedUndertone}
+                </p>
+              )}
+              {extractedFeatures?.contrast && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Contrast (Skin/Eye:{" "}
+                  {extractedFeatures.contrast.skinEyeRatio?.toFixed(2) ?? "N/A"}
+                  , Skin/Hair:{" "}
+                  {extractedFeatures.contrast.skinHairRatio?.toFixed(2) ??
+                    "N/A"}
+                  , Eye/Hair:{" "}
+                  {extractedFeatures.contrast.eyeHairRatio?.toFixed(2) ?? "N/A"}
+                  , Overall: {extractedFeatures.contrast.overall ?? "N/A"})
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-md font-semibold mb-2 text-muted-foreground">
+                Questionnaire Data
+              </h3>
+              {questionnaireData?.naturalHairColor ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Natural Hair Color:{" "}
+                  </p>
+                  <ColorSwatch hex={questionnaireData.naturalHairColor} />
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Natural Hair Color: Not Provided
+                </p>
+              )}
+              {/* Add other questionnaire fields here if needed for debug */}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Footer */}
       <p className="mt-10 text-sm text-center text-muted-foreground">
         Remember to save your Analysis ID ({analysisRecord.id}) or bookmark this
         page!

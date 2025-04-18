@@ -6,37 +6,48 @@ const ColorInfoSchema = z.object({
 });
 
 const PersonalPaletteSchema = z.object({
-  wowColors: z.array(ColorInfoSchema).length(5),
-  bestNeutrals: z.array(ColorInfoSchema).length(3),
-  accentColors: z.array(ColorInfoSchema).min(1).max(3),
+  powerColors: z.array(ColorInfoSchema).min(2).max(5),
+  additionalCompatibleColors: z.array(ColorInfoSchema).min(3).max(5).optional(),
+});
+
+const ColorToAvoidSchema = z.object({
+  color: ColorInfoSchema,
+  explanation: z.string().max(150),
 });
 
 const MakeupRecommendationsSchema = z.object({
-  foundationFocus: z.string(),
-  blushFamilies: z.array(z.string()),
-  lipstickFamilies: z.array(z.string()),
-  eyeshadowTones: z.array(z.string()),
+  foundationUndertoneGuidance: z.string(),
+  blushRecommendation: z.string(),
+  complementaryLipColors: z.array(z.string()).min(2).max(3),
+  complementaryEyeColors: z.array(z.string()).min(2).max(3),
   makeupExplanation: z.string(),
+});
+
+const StyleScenarioSchema = z.object({
+  colorCombinationAdvice: z.string(),
+  patternGuidance: z.string().optional(),
 });
 
 export const AnalysisOutputSchema = z.object({
   season: z.string(),
+  seasonCharacterization: z.string(),
   seasonExplanation: z.string(),
   undertone: z.enum(["Warm", "Cool", "Neutral", "Olive"]),
   undertoneExplanation: z.string(),
   contrastLevel: z.enum(["High", "Medium", "Low"]),
   contrastLevelExplanation: z.string(),
   personalPalette: PersonalPaletteSchema,
-  paletteExplanation: z.string(),
-  colorsToMinimize: z.array(ColorInfoSchema).min(2).max(4),
-  colorsToMinimizeExplanation: z.string(),
-  bestMetalTones: z.array(z.string()),
+  colorsToAvoid: z.array(ColorToAvoidSchema).length(3),
+  primaryMetal: z.string(),
   metalTonesExplanation: z.string(),
   hairColorGuidance: z.string(),
   hairColorExplanation: z.string(),
+  styleScenarios: z.object({
+    professional: StyleScenarioSchema,
+    elegant: StyleScenarioSchema,
+    casual: StyleScenarioSchema,
+  }),
   makeupRecommendations: MakeupRecommendationsSchema.optional(),
-  styleAndCombiningAdvice: z.string(),
-  styleAndCombiningExplanation: z.string(),
   overallVibe: z.string(),
 });
 

@@ -2,33 +2,45 @@ import { z } from "zod";
 
 // Define Schema for Questionnaire Data
 export const questionnaireSchema = z.object({
-  makeupUsage: z.enum(["yes", "no", "prefer_not_to_say"], {
-    required_error: "Please select if you use makeup",
-  }),
-  ageGroup: z.enum(
-    ["under_18", "18_24", "25_34", "35_44", "45_54", "55_plus"],
-    { required_error: "Please select your age group" }
-  ),
   naturalHairColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, {
-      message: "Please enter a valid hex color code (e.g., #RRGGBB)",
+      message: "Please select your natural hair color",
     })
     .min(7) // Ensure it includes '#' and 6 hex digits
     .max(7),
   skinReactionToSun: z.enum(
-    ["burns_easily", "burns_then_tans", "tans_easily", "tans_deeply"],
-    { required_error: "Please select how your skin reacts to the sun" }
+    [
+      "always_burn_rarely_tan",
+      "burn_then_tan",
+      "tan_easily_occasionally_burn",
+      "always_tan_never_burn",
+    ],
+    {
+      required_error: "Please select how your skin reacts to sun exposure",
+    }
   ),
-  veinColor: z.enum(["blue_or_purple", "green", "blue_and_green"], {
-    required_error: "Please select your vein color",
+  blushColor: z.enum(["rosy_pink_red", "peachy_golden", "unsure"], {
+    required_error: "Please select your blush color",
+  }),
+  whiteOrCreamPreference: z.enum(
+    ["pure_white", "off_white_cream", "both_equal"],
+    {
+      required_error: "Please select whether pure white or cream looks better",
+    }
+  ),
+  veinColor: z.enum(["blue_purple", "green_olive", "mix_both", "unsure"], {
+    required_error: "Please select the predominant color of your veins",
   }),
   jewelryPreference: z.enum(
-    ["silver_platinum", "gold", "rose_gold_or_both", "unknown"],
-    { required_error: "Please select your jewelry preference" }
+    ["silver_white", "gold_yellow", "rose_gold_copper", "unsure"],
+    { required_error: "Please select which metal tones complement your skin" }
   ),
   flatteringColors: z.string().optional(),
   unflatteringColors: z.string().optional(),
+  makeupAdvicePreference: z.enum(["yes", "no"], {
+    required_error: "Please indicate if you'd like makeup advice",
+  }),
 });
 
 export type QuestionnaireFormData = z.infer<typeof questionnaireSchema>;

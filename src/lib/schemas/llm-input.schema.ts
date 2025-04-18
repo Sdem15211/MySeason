@@ -24,6 +24,14 @@ const ExtractedColorsSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color format")
     .nullable(),
+  averageEyebrowColorHex: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color format")
+    .nullable(),
+  averageLipColorHex: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color format")
+    .nullable(),
   contrast: ContrastSchema.optional(),
   calculatedUndertone: z.string().nullable().optional(), // Optional pre-calculated undertone
 });

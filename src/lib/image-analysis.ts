@@ -131,20 +131,19 @@ const calculateUndertoneFromRgb = (
     const clampedB = Math.max(0, Math.min(255, rgb.b));
     const [l, a, b] = convert.rgb.lab([clampedR, clampedG, clampedB]);
 
+    // Thresholds (kept the same for now, focus is on logic flow)
     const NEUTRAL_A_THRESHOLD = 8.0;
     const NEUTRAL_B_THRESHOLD = 8.0;
-
     const WARM_B_MIN = 15.0;
     const WARM_A_MIN = 0.0;
-
     const COOL_B_MAX = 9.0;
     const COOL_A_MAX = 12.0;
-
     const OLIVE_A_MAX = 6.0;
     const OLIVE_A_MIN = -6.0;
     const OLIVE_B_MIN = 8.0;
     const OLIVE_B_MAX = 24.0;
 
+    // 1. Check for Neutral
     if (
       Math.abs(a) <= NEUTRAL_A_THRESHOLD &&
       Math.abs(b) <= NEUTRAL_B_THRESHOLD
@@ -152,32 +151,55 @@ const calculateUndertoneFromRgb = (
       return "Neutral";
     }
 
+    // 2. Check for Warm
     if (b >= WARM_B_MIN && a >= WARM_A_MIN) {
+      // Check if it *also* fits Olive criteria, prioritize Olive if so
+      if (
+        a >= OLIVE_A_MIN &&
+        a <= OLIVE_A_MAX &&
+        b >= OLIVE_B_MIN &&
+        b <= OLIVE_B_MAX
+      ) {
+        // Fits both Warm and Olive ranges, classify as Olive
+        // This might indicate a Warm Olive, but we simplify to Olive for now
+        return "Olive";
+      }
+      // Primarily Warm
       return "Warm";
     }
 
-    if (b <= COOL_B_MAX && a <= COOL_A_MAX) {
-      if (a >= OLIVE_A_MIN && a <= OLIVE_A_MAX && b >= OLIVE_B_MIN) {
-      } else {
-        return "Cool";
-      }
-    }
-
+    // 3. Check for Olive (specifically those not already caught by Warm check)
     if (
       a >= OLIVE_A_MIN &&
       a <= OLIVE_A_MAX &&
       b >= OLIVE_B_MIN &&
       b <= OLIVE_B_MAX
     ) {
-      if (!(b >= WARM_B_MIN && a >= WARM_A_MIN)) {
-        return "Olive";
-      }
+      // This catches Olives that don't overlap significantly with Warm
+      return "Olive";
     }
 
+    // 4. Check for Cool
+    if (b <= COOL_B_MAX && a <= COOL_A_MAX) {
+      // Exclude cases that might be Olive but fall within Cool's broader 'a' range
+      if (
+        !(a >= OLIVE_A_MIN && a <= OLIVE_A_MAX && b >= OLIVE_B_MIN) // Make sure it's not Olive
+      ) {
+        return "Cool";
+      }
+      // If it fell through here, it might be an Olive that overlaps Cool thresholds,
+      // but the specific Olive check above should have caught it.
+      // Consider if a refinement is needed, but for now, let it fall through.
+    }
+
+    // 5. Fallback/Undetermined
+    // If none of the above specific categories clearly match
     console.warn(
-      "Could not determine a definitive undertone category based on refined thresholds.",
+      "Could not determine a definitive undertone category based on refined thresholds, falling back.",
       { l: l.toFixed(1), a: a.toFixed(1), b: b.toFixed(1) }
     );
+    // Consider returning "Neutral" as a safer fallback than "Undetermined"
+    // depending on desired behavior for edge cases. Sticking with Undetermined for now.
     return "Undetermined";
   } catch (error) {
     console.error(
@@ -212,6 +234,8 @@ export function calculateFaceRegions(
       rightEyeRegion: null,
       leftEyebrowRegion: null,
       rightEyebrowRegion: null,
+      upperLipRegion: null,
+      lowerLipRegion: null,
     };
   }
 
@@ -341,7 +365,7 @@ export function calculateFaceRegions(
 
   // --- Calculate Eye Regions ---
   const eyeRegionSize = Math.max(4, Math.round(baseRegionSize * 0.3));
-  const eyeHorizontalShift = Math.round(eyeRegionSize * 0.5);
+  const eyeShift = Math.round(eyeRegionSize * 0.4);
 
   let leftEyeRegion: sharp.Region | null = null;
   if (
@@ -354,10 +378,11 @@ export function calculateFaceRegions(
       (leftEyeLeftCorner.position.x + leftEyeRightCorner.position.x) / 2;
     const centerY =
       (leftEyeTopBoundary.position.y + leftEyeBottomBoundary.position.y) / 2;
-    const shiftedCenterX = centerX - eyeHorizontalShift;
+    const shiftedCenterY = centerY + eyeShift;
+    const shiftedCenterX = centerX - eyeShift / 2;
     leftEyeRegion = calculateRegion(
       shiftedCenterX,
-      centerY,
+      shiftedCenterY,
       eyeRegionSize,
       eyeRegionSize,
       imageWidth,
@@ -376,10 +401,11 @@ export function calculateFaceRegions(
       (rightEyeLeftCorner.position.x + rightEyeRightCorner.position.x) / 2;
     const centerY =
       (rightEyeTopBoundary.position.y + rightEyeBottomBoundary.position.y) / 2;
-    const shiftedCenterX = centerX + eyeHorizontalShift;
+    const shiftedCenterY = centerY + eyeShift;
+    const shiftedCenterX = centerX + eyeShift / 2;
     rightEyeRegion = calculateRegion(
       shiftedCenterX,
-      centerY,
+      shiftedCenterY,
       eyeRegionSize,
       eyeRegionSize,
       imageWidth,
@@ -435,6 +461,34 @@ export function calculateFaceRegions(
     );
   }
 
+  // --- Calculate Lip Regions ---
+  const upperLip = findLandmark(landmarks, "UPPER_LIP");
+  const lowerLip = findLandmark(landmarks, "LOWER_LIP");
+  const lipRegionSize = Math.max(5, Math.round(baseRegionSize * 0.35)); // Smaller region for lips
+  const lipVerticalOffset = Math.round(lipRegionSize * 1); // Offset to shift upper lip down
+
+  const upperLipRegion = calculateRegion(
+    upperLip?.position?.x,
+    upperLip?.position?.y != null
+      ? upperLip.position.y + lipVerticalOffset
+      : undefined, // Added vertical offset
+    lipRegionSize,
+    lipRegionSize,
+    imageWidth,
+    imageHeight
+  );
+
+  const lowerLipRegion = calculateRegion(
+    lowerLip?.position?.x,
+    lowerLip?.position?.y != null
+      ? lowerLip.position.y - lipVerticalOffset
+      : undefined, // Added vertical offset
+    lipRegionSize,
+    lipRegionSize,
+    imageWidth,
+    imageHeight
+  );
+
   return {
     leftCheekRegion,
     rightCheekRegion,
@@ -445,6 +499,8 @@ export function calculateFaceRegions(
     rightEyeRegion,
     leftEyebrowRegion,
     rightEyebrowRegion,
+    upperLipRegion,
+    lowerLipRegion,
   };
 }
 
@@ -484,6 +540,8 @@ export const extractFacialColors = async (
     rightEyeRgb,
     leftEyebrowRgb,
     rightEyebrowRgb,
+    upperLipRgb,
+    lowerLipRgb,
   ] = await Promise.all([
     getAverageRgbColor(imageBuffer, regions.leftCheekRegion),
     getAverageRgbColor(imageBuffer, regions.rightCheekRegion),
@@ -494,6 +552,8 @@ export const extractFacialColors = async (
     getAverageRgbColor(imageBuffer, regions.rightEyeRegion),
     getAverageRgbColor(imageBuffer, regions.leftEyebrowRegion),
     getAverageRgbColor(imageBuffer, regions.rightEyebrowRegion),
+    getAverageRgbColor(imageBuffer, regions.upperLipRegion),
+    getAverageRgbColor(imageBuffer, regions.lowerLipRegion),
   ]);
 
   // --- Combine Skin Colors ---
@@ -546,6 +606,23 @@ export const extractFacialColors = async (
     finalEyebrowRgb = availableEyebrowRgbs[0]!;
   }
 
+  // --- Combine Lip Colors --- Added
+  let finalLipRgb: RgbColor | null = null;
+  const availableLipRgbs = [upperLipRgb, lowerLipRgb].filter(
+    (rgb): rgb is RgbColor => rgb !== null
+  );
+  if (availableLipRgbs.length === 2) {
+    // Both lip regions detected
+    finalLipRgb = {
+      r: (availableLipRgbs[0]!.r + availableLipRgbs[1]!.r) / 2,
+      g: (availableLipRgbs[0]!.g + availableLipRgbs[1]!.g) / 2,
+      b: (availableLipRgbs[0]!.b + availableLipRgbs[1]!.b) / 2,
+    };
+  } else if (availableLipRgbs.length === 1) {
+    // Only one lip region detected
+    finalLipRgb = availableLipRgbs[0]!;
+  }
+
   // Calculate Undertone
   const skinUndertone = calculateUndertoneFromRgb(finalSkinRgb);
 
@@ -571,6 +648,7 @@ export const extractFacialColors = async (
   const skinColorHex = rgbToHex(finalSkinRgb);
   const averageEyeColorHex = rgbToHex(finalEyeRgb);
   const averageEyebrowColorHex = rgbToHex(finalEyebrowRgb);
+  const averageLipColorHex = rgbToHex(finalLipRgb);
 
   return {
     skinColorHex,
@@ -578,5 +656,6 @@ export const extractFacialColors = async (
     skinUndertone,
     skinColorLab,
     averageEyebrowColorHex,
+    averageLipColorHex,
   };
 };
