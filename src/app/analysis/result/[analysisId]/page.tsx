@@ -21,7 +21,18 @@ import { CopyButton } from "@/components/features/analysis/copy-button";
 import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema"; // Updated schema import
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
-import { AlertCircle, Info, Palette, Sparkles, XCircle } from "lucide-react"; // Import icons
+import {
+  AlertCircle,
+  Info,
+  Palette,
+  Sparkles,
+  XCircle,
+  ArrowUp,
+  ArrowDown,
+  Briefcase,
+  Gem,
+  Shirt,
+} from "lucide-react"; // Import icons
 
 interface AnalysisResultsPageProps {
   params: {
@@ -74,6 +85,26 @@ const ColorSwatch = ({
   </div>
 );
 
+// Helper component for explanation accordions
+const ExplanationAccordion = ({
+  text,
+  triggerText = "Show me why...",
+}: {
+  text: string;
+  triggerText?: string;
+}) => (
+  <Accordion type="single" collapsible className="w-full mt-1">
+    <AccordionItem value="explanation" className="border-none">
+      <AccordionTrigger className="text-xs font-medium text-muted-foreground hover:no-underline p-0 h-auto [&[data-state=open]>svg]:rotate-0">
+        <span className="mr-1">{triggerText}</span>
+      </AccordionTrigger>
+      <AccordionContent className="pt-1 text-xs text-muted-foreground italic">
+        {text}
+      </AccordionContent>
+    </AccordionItem>
+  </Accordion>
+);
+
 // Interface for input data stored in DB (keep as is for now)
 interface StoredInputData {
   extractedFeatures: ExtractedColors & {
@@ -87,11 +118,6 @@ interface StoredInputData {
   };
   questionnaireData: QuestionnaireFormData;
 }
-
-// Component to render explanation tooltips/collapsibles (Placeholder)
-const Explanation = ({ text }: { text: string }) => (
-  <p className="text-xs text-muted-foreground italic mt-1">({text})</p>
-);
 
 export default async function AnalysisResultsPage({
   params,
@@ -183,31 +209,12 @@ export default async function AnalysisResultsPage({
             {result.seasonCharacterization}
           </CardDescription>
         </CardHeader>
-        {/* Optionally keep a brief season explanation here if needed */}
-        <CardContent className="text-center text-sm text-muted-foreground">
-          <Explanation text={result.seasonExplanation} />
-        </CardContent>
-      </Card>
-
-      {/* Core Analysis Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info size={20} /> Analysis Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p>
-            <strong>Undertone:</strong> {result.undertone}
-            <Explanation text={result.undertoneExplanation} />
-          </p>
-          <p>
-            <strong>Contrast Level:</strong> {result.contrastLevel}
-            <Explanation text={result.contrastLevelExplanation} />
-          </p>
-          <p>
-            <strong>Overall Vibe:</strong> {result.overallVibe}
-          </p>
+        {/* Season Explanation - now uses accordion */}
+        <CardContent className="text-center">
+          <ExplanationAccordion
+            text={result.seasonExplanation}
+            triggerText="Learn more about this season..."
+          />
         </CardContent>
       </Card>
 
@@ -288,7 +295,7 @@ export default async function AnalysisResultsPage({
         </CardHeader>
         <CardContent>
           <p className="text-lg font-medium">{result.primaryMetal}</p>
-          <Explanation text={result.metalTonesExplanation} />
+          <ExplanationAccordion text={result.metalTonesExplanation} />
         </CardContent>
       </Card>
 
@@ -297,17 +304,31 @@ export default async function AnalysisResultsPage({
         <CardHeader>
           <CardTitle>Hair Color Guidance</CardTitle>
         </CardHeader>
-        <CardContent className="prose prose-sm max-w-none dark:prose-invert text-foreground">
-          {/* Assume result.hairColorGuidance is pre-formatted with line breaks or paragraphs */}
-          <div
-            dangerouslySetInnerHTML={{
-              __html: result.hairColorGuidance.replace(
-                new RegExp("\\n", "g"),
-                "<br />"
-              ),
-            }}
-          />
-          <Explanation text={result.hairColorExplanation} />
+        <CardContent className="space-y-3">
+          <div className="prose prose-sm max-w-none dark:prose-invert text-foreground space-y-2">
+            <div className="flex items-start gap-2">
+              <ArrowUp size={16} className="mt-1 flex-shrink-0" />
+              <span>
+                <strong>Lighter Tone:</strong>{" "}
+                {result.hairColorGuidance.lighterToneEffect}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <ArrowDown size={16} className="mt-1 flex-shrink-0" />
+              <span>
+                <strong>Darker Tone:</strong>{" "}
+                {result.hairColorGuidance.darkerToneEffect}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <XCircle size={16} className="mt-1 flex-shrink-0" />
+              <span>
+                <strong>Color to Avoid:</strong>{" "}
+                {result.hairColorGuidance.colorToAvoid}
+              </span>
+            </div>
+          </div>
+          <ExplanationAccordion text={result.hairColorExplanation} />
         </CardContent>
       </Card>
 
@@ -319,9 +340,15 @@ export default async function AnalysisResultsPage({
         <CardContent>
           <Tabs defaultValue="professional" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="professional">Professional</TabsTrigger>
-              <TabsTrigger value="elegant">Elegant</TabsTrigger>
-              <TabsTrigger value="casual">Casual</TabsTrigger>
+              <TabsTrigger value="professional" className="gap-1">
+                <Briefcase size={16} /> Professional
+              </TabsTrigger>
+              <TabsTrigger value="elegant" className="gap-1">
+                <Gem size={16} /> Elegant
+              </TabsTrigger>
+              <TabsTrigger value="casual" className="gap-1">
+                <Shirt size={16} /> Casual
+              </TabsTrigger>
             </TabsList>
             <TabsContent
               value="professional"
@@ -384,12 +411,38 @@ export default async function AnalysisResultsPage({
               <strong>Eye Colors:</strong>{" "}
               {result.makeupRecommendations.complementaryEyeColors.join(", ")}
             </p>
-            <Explanation
+            <ExplanationAccordion
               text={result.makeupRecommendations.makeupExplanation}
             />
           </CardContent>
         </Card>
       )}
+
+      {/* Analysis Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info size={20} /> Analysis Breakdown
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div>
+            <p className="mb-1">
+              <strong>Undertone:</strong> {result.undertone}
+            </p>
+            <ExplanationAccordion text={result.undertoneExplanation} />
+          </div>
+          <div>
+            <p className="mb-1">
+              <strong>Contrast Level:</strong> {result.contrastLevel}
+            </p>
+            <ExplanationAccordion text={result.contrastLevelExplanation} />
+          </div>
+          <p>
+            <strong>Overall Vibe:</strong> {result.overallVibe}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Input Data (Debug Section - Keep as is for now) */}
       <Accordion type="single" collapsible className="w-full">

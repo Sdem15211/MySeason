@@ -40,7 +40,21 @@ export const AnalysisOutputSchema = z.object({
   colorsToAvoid: z.array(ColorToAvoidSchema).length(3),
   primaryMetal: z.string(),
   metalTonesExplanation: z.string(),
-  hairColorGuidance: z.string(),
+  hairColorGuidance: z.object({
+    lighterToneEffect: z
+      .string()
+      .describe(
+        "Effect of going lighter, e.g., 'Your complexion will appear brighter.'"
+      ),
+    darkerToneEffect: z
+      .string()
+      .describe(
+        "Effect of going darker, e.g., 'Your eyes will gain intensity.'"
+      ),
+    colorToAvoid: z
+      .string()
+      .describe("Specific hair color to avoid, e.g., 'Ashy blonde because...'"),
+  }),
   hairColorExplanation: z.string(),
   styleScenarios: z.object({
     professional: StyleScenarioSchema,
