@@ -42,33 +42,59 @@ export function MobileCameraCapture({
 
   // --- Camera Setup ---
   const setupCamera = useCallback(async () => {
-    console.log("Setting up camera...");
+    console.log("[MobileCameraCapture] Setting up camera...");
     setStatus("initializing");
-    setCapturedImageDataUrl(null); // Clear previous capture
+    setCapturedImageDataUrl(null);
     setErrorMessage(null);
 
-    // Ensure existing tracks are stopped before requesting new stream
     stream?.getTracks().forEach((track) => track.stop());
 
     try {
+      console.log("[MobileCameraCapture] Requesting media stream...");
       const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 1280, height: 720 }, // Request specific resolution if needed
+        video: { facingMode: "user", width: 1280, height: 720 },
         audio: false,
       });
+      console.log("[MobileCameraCapture] Media stream acquired.", newStream);
       setStream(newStream);
+
       if (videoRef.current) {
+        console.log(
+          "[MobileCameraCapture] videoRef is current. Assigning srcObject..."
+        );
         videoRef.current.srcObject = newStream;
-        // Wait for video to start playing to avoid capturing a black frame
         videoRef.current.onloadedmetadata = () => {
-          console.log("Camera stream loaded.");
+          console.log("[MobileCameraCapture] onloadedmetadata event fired.");
+          // Check video dimensions
+          if (videoRef.current) {
+            console.log(
+              `[MobileCameraCapture] Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
+            );
+          }
           setStatus("streaming");
         };
+        videoRef.current.onplaying = () => {
+          console.log("[MobileCameraCapture] onplaying event fired.");
+          // Potentially set status here if onloadedmetadata is unreliable
+          // setStatus("streaming");
+        };
+        videoRef.current.onerror = (e) => {
+          console.error("[MobileCameraCapture] Video element error:", e);
+          setErrorMessage("Video element failed to load the stream.");
+          setStatus("error");
+        };
+        console.log(
+          "[MobileCameraCapture] srcObject assigned. Waiting for metadata..."
+        );
       } else {
-        // If videoRef isn't ready yet, try again shortly
+        console.warn(
+          "[MobileCameraCapture] videoRef not current yet. Retrying setup soon."
+        );
         setTimeout(setupCamera, 100);
       }
     } catch (err) {
-      console.error("Error accessing camera:", err);
+      // Keep existing detailed error handling
+      console.error("[MobileCameraCapture] Error accessing camera:", err);
       let message =
         "Could not access camera. Please ensure permissions are granted.";
       if (err instanceof Error) {
@@ -86,7 +112,7 @@ export function MobileCameraCapture({
       onError?.(message);
       toast.error(message);
     }
-  }, [onError, stream]); // Include stream in dependency to manage stopping old tracks
+  }, [onError, stream]);
 
   useEffect(() => {
     setupCamera(); // Start camera immediately on mount
