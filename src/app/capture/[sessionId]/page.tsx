@@ -13,8 +13,8 @@ function CaptureClient({ sessionId }: { sessionId: string }) {
   return <MobileCameraCapture sessionId={sessionId} />;
 }
 
-export default function CapturePage({ params }: CapturePageProps) {
-  const { sessionId } = params;
+export default async function CapturePage({ params }: CapturePageProps) {
+  const { sessionId } = await params;
 
   if (!sessionId) {
     // Handle missing session ID case
