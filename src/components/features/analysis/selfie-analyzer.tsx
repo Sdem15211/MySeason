@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
-import { upload } from "@vercel/blob/client";
-import type { UploadProgressEvent } from "@vercel/blob";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Loader2, AlertCircle } from "lucide-react";
+import { MobileCameraCapture } from "./mobile-camera-capture";
 
 interface SelfieAnalyzerProps {
   sessionId: string;
@@ -16,153 +16,193 @@ interface SelfieAnalyzerProps {
 
 type Status =
   | "idle"
-  | "selecting"
-  | "uploading"
-  | "validating"
+  | "desktop_qr"
+  | "mobile_capture"
+  | "polling_failed"
+  | "validation_failed"
   | "redirecting"
-  | "success"
   | "error";
 
+const POLLING_INTERVAL_MS = 3000;
+const POLLING_TIMEOUT_MS = 300000;
+
 export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
-  const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isLikelyDesktop, setIsLikelyDesktop] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const router = useRouter();
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      if (file) {
-        setFile(file);
-        setStatus("selecting");
-        setErrorMessage(null);
-      }
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const desktop = window.matchMedia("(min-width: 768px)").matches;
+      setIsLikelyDesktop(desktop);
+      setStatus(desktop ? "desktop_qr" : "mobile_capture");
+      console.log(`Device detected as: ${desktop ? "Desktop" : "Mobile"}`);
     } else {
-      setFile(null);
-      setStatus("idle");
+      setStatus("mobile_capture");
     }
-  };
+  }, []);
 
-  const handleSubmit = async () => {
-    if (!file) {
-      setErrorMessage("Please select a file first.");
-      toast.error("Please select a file first.");
-      return;
-    }
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    pollIntervalRef.current = null;
+    pollTimeoutRef.current = null;
+    console.log("Polling stopped.");
+  }, []);
 
-    setStatus("uploading");
-    setErrorMessage(null);
-    let blobResult = null;
+  const startPolling = useCallback(() => {
+    stopPolling();
+    console.log(`Starting polling for session: ${sessionId}`);
 
-    console.log(`Starting upload process for session: ${sessionId}`);
+    const checkStatus = async () => {
+      console.log(`Polling status for ${sessionId}...`);
+      try {
+        const response = await fetch(`/api/v1/analysis/${sessionId}/status`);
+        const data = await response.json();
 
-    try {
-      // 1. Upload to Vercel Blob
-      const filename = `${sessionId}-${file.name}`;
-      console.log(`Uploading file as: ${filename}`);
-
-      blobResult = await upload(filename, file, {
-        access: "public",
-        handleUploadUrl: `/api/v1/blob/upload?sessionId=${sessionId}`,
-        onUploadProgress: (progressEvent: UploadProgressEvent) => {
-          setUploadProgress(progressEvent.percentage);
-          console.log("Upload Progress:", progressEvent.percentage);
-        },
-      });
-
-      console.log("Upload complete:", blobResult);
-      setUploadProgress(100);
-
-      if (!blobResult?.url) {
-        throw new Error("Blob upload failed or result is missing URL.");
-      }
-
-      // 2. Validate the Uploaded Image
-      setStatus("validating");
-      console.log("Sending request to /api/v1/analysis/validate");
-      const validateResponse = await fetch("/api/v1/analysis/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blobUrl: blobResult.url, sessionId }),
-      });
-
-      const validateData = await validateResponse.json();
-      console.log("Validation response:", validateData);
-
-      if (!validateResponse.ok || !validateData.success) {
-        throw new Error(
-          validateData.message ||
-            "Image validation failed. Please try a different photo."
-        );
-      }
-
-      console.log("Validation successful. Redirecting to questionnaire...");
-      setStatus("redirecting");
-      toast.success("Selfie accepted! Moving to questionnaire...");
-
-      router.push(`/analysis/session/${sessionId}/questionnaire`);
-    } catch (error: unknown) {
-      console.error("Error during selfie processing:", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : "An unexpected error occurred.";
-      setErrorMessage(message);
-      setStatus("error");
-      toast.error(message);
-
-      if (status !== "uploading" && blobResult?.url) {
-        console.log(
-          `Attempting to delete blob due to subsequent error: ${blobResult.url}`
-        );
-        try {
-          fetch("/api/v1/blob/delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ blobUrl: blobResult.url, sessionId }),
-          });
-        } catch (deleteError) {
-          console.error("Failed to send delete request for blob:", deleteError);
+        if (!response.ok) {
+          throw new Error(
+            data.message || `Status check failed: ${response.statusText}`
+          );
         }
+
+        if (data.success) {
+          console.log(`Received status: ${data.status}`);
+          if (data.status === "awaiting_questionnaire") {
+            stopPolling();
+            setStatus("redirecting");
+            toast.success("Selfie received! Moving to questionnaire...");
+            router.push(`/analysis/session/${sessionId}/questionnaire`);
+          } else if (
+            data.status === "validation_failed" ||
+            data.status === "analysis_failed"
+          ) {
+            stopPolling();
+            setErrorMessage(
+              data.message ||
+                "Photo validation failed on the phone. Please scan the QR code again and try a different photo."
+            );
+            setStatus("validation_failed");
+            toast.error(
+              "Photo validation failed. Please scan the QR code again."
+            );
+          }
+        } else {
+          throw new Error(data.message || "Status check returned failure.");
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
       }
+    };
+
+    pollIntervalRef.current = setInterval(checkStatus, POLLING_INTERVAL_MS);
+    pollTimeoutRef.current = setTimeout(() => {
+      console.warn(
+        `Polling timeout reached for session ${sessionId}. Stopping.`
+      );
+      stopPolling();
+      setStatus((currentStatus) => {
+        if (currentStatus === "desktop_qr") {
+          setErrorMessage(
+            "Timed out waiting for photo from phone. Please try scanning the QR code again."
+          );
+          toast.error("Timed out waiting for photo. Please try again.");
+          return "polling_failed";
+        }
+        return currentStatus;
+      });
+    }, POLLING_TIMEOUT_MS);
+
+    checkStatus();
+  }, [sessionId, router, stopPolling]);
+
+  useEffect(() => {
+    if (status === "desktop_qr") {
+      startPolling();
     }
+    return () => {
+      if (status !== "desktop_qr") {
+        stopPolling();
+      }
+    };
+  }, [status, startPolling, stopPolling]);
+
+  const getQrCodeUrl = () => {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    if (!baseUrl) {
+      console.error("Error: NEXT_PUBLIC_APP_URL is not set.");
+      return "";
+    }
+    return `${baseUrl}/capture/${sessionId}`;
   };
 
-  const isLoading = ["uploading", "validating", "redirecting"].includes(status);
+  const handleMobileSuccess = useCallback(() => {
+    setStatus("redirecting");
+    toast.success("Selfie accepted! Moving to questionnaire...");
+    router.push(`/analysis/session/${sessionId}/questionnaire`);
+  }, [router, sessionId]);
+
+  const handleMobileError = useCallback((message: string) => {
+    console.log("Mobile capture error reported to parent: ", message);
+  }, []);
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <Input
-        type="file"
-        accept="image/jpeg, image/png, image/webp"
-        onChange={handleFileChange}
-        disabled={isLoading}
-        className="max-w-sm"
-      />
-      {status === "uploading" && (
-        <div className="w-full max-w-sm bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-          <div
-            className="bg-blue-600 h-2.5 rounded-full transition-all duration-150"
-            style={{ width: `${uploadProgress}%` }}
-          ></div>
+    <div className={cn("space-y-4 flex flex-col items-center", className)}>
+      {status === "idle" && (
+        <div className="flex items-center space-x-2 text-muted-foreground p-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Determining best experience...</span>
         </div>
       )}
-      <Button onClick={handleSubmit} disabled={!file || isLoading}>
-        {isLoading
-          ? status === "uploading"
-            ? `Uploading (${uploadProgress.toFixed(0)}%)...`
-            : status === "validating"
-            ? "Validating..."
-            : status === "redirecting"
-            ? "Redirecting..."
-            : "Processing..."
-          : "Upload Selfie"}
-      </Button>
-      {status === "error" && errorMessage && (
-        <p className="text-red-600">Error: {errorMessage}</p>
+
+      {status === "desktop_qr" && isLikelyDesktop && (
+        <div className="text-center space-y-4 p-6 border rounded-lg shadow-sm bg-card max-w-md">
+          <h3 className="text-lg font-medium">Scan with your Phone</h3>
+          <p className="text-sm text-muted-foreground">
+            Use your phone&apos;s camera for the best quality selfie. Scan the
+            QR code below to continue on your mobile device.
+          </p>
+          <div className="bg-white p-4 inline-block rounded-md shadow">
+            <QRCode value={getQrCodeUrl()} size={192} level="M" />
+          </div>
+          <div className="flex items-center justify-center space-x-2 pt-4 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Waiting for photo from phone...</span>
+          </div>
+        </div>
+      )}
+
+      {status === "mobile_capture" && !isLikelyDesktop && (
+        <MobileCameraCapture
+          sessionId={sessionId}
+          onSuccess={handleMobileSuccess}
+          onError={handleMobileError}
+        />
+      )}
+
+      {(status === "polling_failed" || status === "validation_failed") &&
+        isLikelyDesktop && (
+          <div className="text-center space-y-4 p-6 border border-destructive rounded-lg bg-destructive/10 max-w-md">
+            <AlertCircle className="mx-auto h-8 w-8 text-destructive" />
+            <h4 className="font-semibold text-destructive">Upload Failed</h4>
+            <p className="text-sm text-destructive">{errorMessage}</p>
+            <Button variant="outline" onClick={() => setStatus("desktop_qr")}>
+              Show QR Code Again
+            </Button>
+          </div>
+        )}
+
+      {status === "redirecting" && (
+        <div className="flex items-center space-x-2 text-muted-foreground p-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Processing...</span>
+        </div>
       )}
     </div>
   );
