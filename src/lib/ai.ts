@@ -1,4 +1,3 @@
-// import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { LLMInput } from "./schemas/llm-input.schema";
@@ -7,9 +6,7 @@ import {
   AnalysisOutputSchema,
 } from "./schemas/analysis-output.schema";
 
-// const google = createGoogleGenerativeAI();
-
-// --- Prompt Content (Updated) ---
+// --- Prompt Content ---
 const systemPrompt = `
 You are an expert color analyst specializing in personal color season analysis. Your job is to analyze the provided facial features and questionnaire data to determine the most flattering color palette and style recommendations for an individual.
 
@@ -74,7 +71,7 @@ Provide your analysis in the required JSON format following the provided schema.
    - Emphasize what colors will do FOR them rather than avoid problems
 
 4. PRACTICALITY
-   - Power colors must include exactly 5 colors, with at least 2-3 basic/everyday colors
+   - Power colors must include exactly 5 colors, with at least 2-3 basic/everyday colors that are accessible in clothing markets
    - Recommendations should be immediately applicable to wardrobe choices
    - Hair and makeup advice should be realistic and achievable
 
@@ -94,8 +91,8 @@ Remember that the purpose of this analysis is to provide practical, personalized
 ### Hair Color Guidelines
 
 For the \`hairColorGuidance\` field, provide your response as a JSON object with three keys:
-1. \`lighterToneEffect\`: Describe the effect of going lighter (e.g., "Your complexion will appear brighter and more energetic.")
-2. \`darkerToneEffect\`: Describe the effect of going darker (e.g., "Your eyes will gain intensity and your overall look will become more dramatic.")
+1. \`lighterToneEffect\`: Describe the general effect of going lighter (e.g., "Your complexion will appear brighter and more energetic."). Make sure to describe the effect in a way that is easy to understand and apply to the person's everyday life.
+2. \`darkerToneEffect\`: Describe the general effect of going darker (e.g., "Your eyes will gain intensity and your overall look will become more dramatic."). Make sure to describe the effect in a way that is easy to understand and apply to the person's everyday life.
 3. \`colorToAvoid\`: State the specific color to avoid and the reason (e.g., "Ashy blonde because it clashes with your warm undertones.")
 
 Ensure the \`hairColorExplanation\` field still provides the overall reasoning.
@@ -161,6 +158,9 @@ When selecting power colors for the palette:
 5. For high contrast individuals, include at least one high-contrast pairing
 6. For low contrast individuals, keep colors within a similar value range
 7. Always include colors that are practical and accessible in clothing markets
+8. Make sure to include colors that are easy to find in clothing markets
+9. Colors can't be all from the same category (e.g. all blues or all greens)
+10. Colors can't be all the same tone (e.g. all colors are very muted)
 
 When selecting colors to avoid:
 1. Choose colors that are from seasons opposite to theirs on the color wheel
@@ -179,7 +179,6 @@ When selecting colors to avoid:
 export async function generateAnalysis(
   input: LLMInput
 ): Promise<AnalysisOutput> {
-  // Construct the user message part of the prompt, injecting the actual data
   const userPrompt = `Here is the user data: ${JSON.stringify(input, null, 2)}`;
 
   try {
@@ -188,7 +187,7 @@ export async function generateAnalysis(
       schema: AnalysisOutputSchema,
       prompt: userPrompt,
       system: systemPrompt,
-      temperature: 0.75,
+      temperature: 0.6,
     });
 
     console.log(

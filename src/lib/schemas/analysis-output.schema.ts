@@ -6,8 +6,8 @@ const ColorInfoSchema = z.object({
 });
 
 const PersonalPaletteSchema = z.object({
-  powerColors: z.array(ColorInfoSchema).min(2).max(5),
-  additionalCompatibleColors: z.array(ColorInfoSchema).min(3).max(5).optional(),
+  powerColors: z.array(ColorInfoSchema).length(5),
+  additionalCompatibleColors: z.array(ColorInfoSchema).length(3),
 });
 
 const ColorToAvoidSchema = z.object({
