@@ -1,10 +1,30 @@
 import { ImageAnnotatorClient, protos } from "@google-cloud/vision";
 import { google } from "@google-cloud/vision/build/protos/protos";
 
-// Instantiate the client
-// The client will automatically use the credentials provided
-// via the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-const visionClient = new ImageAnnotatorClient();
+// Function to get credentials from environment variable
+const getCredentials = () => {
+  const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
+  if (!credentialsJson) {
+    // Throw an error during initialization if the variable is missing
+    throw new Error(
+      "GOOGLE_CREDENTIALS_JSON environment variable is not set. " +
+        "Please provide the service account JSON key content in this variable (local: via .env.local, Vercel: via dashboard)."
+    );
+  }
+  try {
+    return JSON.parse(credentialsJson);
+  } catch (error) {
+    console.error("Failed to parse GOOGLE_CREDENTIALS_JSON:", error);
+    throw new Error(
+      "Failed to parse GOOGLE_CREDENTIALS_JSON. Ensure it's valid JSON."
+    );
+  }
+};
+
+// Instantiate the client explicitly with credentials from the environment variable
+const visionClient = new ImageAnnotatorClient({
+  credentials: getCredentials(),
+});
 
 // Define likelihood thresholds (adjust as needed)
 // See: https://cloud.google.com/vision/docs/reference/rest/v1/Likelihood
