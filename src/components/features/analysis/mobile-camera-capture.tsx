@@ -31,6 +31,7 @@ export function MobileCameraCapture({
   onSuccess,
   onError,
 }: MobileCameraCaptureProps) {
+  console.log("[MobileCameraCapture] Component rendering started.");
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<CaptureStatus>("initializing");
@@ -42,12 +43,14 @@ export function MobileCameraCapture({
 
   // --- Camera Setup ---
   const setupCamera = useCallback(async () => {
-    console.log("[MobileCameraCapture] Setting up camera...");
-    setStatus("initializing");
+    console.log("[MobileCameraCapture] Running setupCamera function...");
     setCapturedImageDataUrl(null);
     setErrorMessage(null);
 
-    stream?.getTracks().forEach((track) => track.stop());
+    if (stream) {
+      console.log("[MobileCameraCapture] Stopping existing stream tracks.");
+      stream.getTracks().forEach((track) => track.stop());
+    }
 
     try {
       console.log("[MobileCameraCapture] Requesting media stream...");
@@ -65,7 +68,6 @@ export function MobileCameraCapture({
         videoRef.current.srcObject = newStream;
         videoRef.current.onloadedmetadata = () => {
           console.log("[MobileCameraCapture] onloadedmetadata event fired.");
-          // Check video dimensions
           if (videoRef.current) {
             console.log(
               `[MobileCameraCapture] Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
@@ -75,8 +77,6 @@ export function MobileCameraCapture({
         };
         videoRef.current.onplaying = () => {
           console.log("[MobileCameraCapture] onplaying event fired.");
-          // Potentially set status here if onloadedmetadata is unreliable
-          // setStatus("streaming");
         };
         videoRef.current.onerror = (e) => {
           console.error("[MobileCameraCapture] Video element error:", e);
@@ -87,13 +87,16 @@ export function MobileCameraCapture({
           "[MobileCameraCapture] srcObject assigned. Waiting for metadata..."
         );
       } else {
-        console.warn(
-          "[MobileCameraCapture] videoRef not current yet. Retrying setup soon."
+        console.error(
+          "[MobileCameraCapture] setupCamera: videoRef is unexpectedly null. Cannot setup camera."
         );
-        setTimeout(setupCamera, 100);
+        setStatus("error");
+        setErrorMessage(
+          "Internal error: Camera component failed to initialize."
+        );
+        onError?.("Internal error: Camera component failed to initialize.");
       }
     } catch (err) {
-      // Keep existing detailed error handling
       console.error("[MobileCameraCapture] Error accessing camera:", err);
       let message =
         "Could not access camera. Please ensure permissions are granted.";
@@ -115,15 +118,23 @@ export function MobileCameraCapture({
   }, [onError, stream]);
 
   useEffect(() => {
-    setupCamera(); // Start camera immediately on mount
+    console.log("[MobileCameraCapture] Mount effect running.");
+    const timerId = setTimeout(() => {
+      console.log(
+        "[MobileCameraCapture] Mount effect: Timer expired, calling setupCamera."
+      );
+      setupCamera();
+    }, 100);
 
-    // Cleanup function to stop camera when component unmounts
     return () => {
-      console.log("Stopping camera stream on unmount.");
+      console.log(
+        "[MobileCameraCapture] Cleanup: Clearing timer and stopping stream."
+      );
+      clearTimeout(timerId);
       stream?.getTracks().forEach((track) => track.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount
+  }, []);
 
   // --- Capture Logic ---
   const handleCapture = useCallback(() => {

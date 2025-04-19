@@ -9,12 +9,14 @@ interface CapturePageProps {
 // Use a Client Component wrapper to handle state/effects if needed,
 // or directly render if MobileCameraCapture handles everything.
 function CaptureClient({ sessionId }: { sessionId: string }) {
+  console.log("[CaptureClient] Rendering with sessionId:", sessionId);
   // Can add more wrapper logic here if needed in the future
   return <MobileCameraCapture sessionId={sessionId} />;
 }
 
-export default async function CapturePage({ params }: CapturePageProps) {
-  const { sessionId } = await params;
+export default function CapturePage({ params }: CapturePageProps) {
+  console.log("[CapturePage] Rendering with params:", params);
+  const { sessionId } = params;
 
   if (!sessionId) {
     // Handle missing session ID case
