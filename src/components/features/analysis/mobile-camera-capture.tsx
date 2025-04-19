@@ -6,7 +6,7 @@ import type { PutBlobResult } from "@vercel/blob";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Camera, RotateCcw, Check, Loader2 } from "lucide-react";
-import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface MobileCameraCaptureProps {
   sessionId: string;
@@ -303,34 +303,39 @@ export function MobileCameraCapture({
 
       {/* Camera View / Preview Area */}
       <div className="relative w-full aspect-[3/4] border rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 flex items-center justify-center shadow-inner">
-        {status === "initializing" && (
-          <div className="flex flex-col items-center text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <span>Starting Camera...</span>
-          </div>
-        )}
-        {status === "streaming" && (
+        {/* Render video element if initializing OR streaming */}
+        {(status === "initializing" || status === "streaming") && (
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted // Mute to avoid potential audio feedback loops
-            className="w-full h-full object-cover scale-x-[-1]" // Mirror mode
+            // Visually hide if only initializing, show if streaming
+            className={cn(
+              "w-full h-full object-cover scale-x-[-1]", // Base styles + mirror mode
+              status === "initializing" && "opacity-0" // Hide visually during init
+            )}
           />
         )}
+        {/* Show initializing indicator ON TOP of the hidden video */}
+        {status === "initializing" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-2" />
+            <span>Starting Camera...</span>
+          </div>
+        )}
+        {/* Preview Image - Render if captured, loading, or error occurred after capture */}
         {(status === "captured" ||
           isLoading ||
           (status === "error" && capturedImageDataUrl)) &&
           capturedImageDataUrl && (
-            // Show preview if captured, uploading, validating, or error occurred after capture
-            <Image
+            <img
               src={capturedImageDataUrl}
               alt="Captured selfie preview"
               className="w-full h-full object-cover"
             />
           )}
         {/* Add face overlay SVG/HTML here positioned absolutely */}
-        {/* Example: <div className="absolute inset-0 border-2 border-dashed border-white opacity-50 rounded-full" style={{ top: '20%', bottom: '20%', left: '15%', right: '15%' }}></div> */}
       </div>
 
       {/* Action Buttons */}
