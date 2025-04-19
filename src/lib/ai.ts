@@ -1,13 +1,13 @@
-// import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { LLMInput } from "./schemas/llm-input.schema";
 import {
   AnalysisOutput,
   AnalysisOutputSchema,
 } from "./schemas/analysis-output.schema";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+// import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
-const google = createGoogleGenerativeAI();
+// const google = createGoogleGenerativeAI();
 // --- Prompt Content ---
 // const systemPromptClaude = `
 // You are an expert color analyst specializing in personal color season analysis. Your job is to analyze the provided facial features and questionnaire data to determine the most flattering color palette and style recommendations for an individual.
@@ -323,7 +323,7 @@ export async function generateAnalysis(
 
   try {
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash-exp"),
+      model: anthropic("claude-3-5-sonnet-20240620"),
       schema: AnalysisOutputSchema,
       prompt: userPrompt,
       system: systemPrompt,
