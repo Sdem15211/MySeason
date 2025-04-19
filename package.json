@@ -38,6 +38,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.55.0",
+    "react-qr-code": "^2.0.15",
     "sharp": "^0.34.1",
     "sonner": "^2.0.3",
     "stripe": "^16.6.0",
