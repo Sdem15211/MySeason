@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
         .select({
           id: sessions.id,
           status: sessions.status,
+          expiresAt: sessions.expiresAt,
         })
         .from(sessions)
         .where(eq(sessions.id, sessionId))
@@ -105,7 +106,6 @@ export async function POST(request: NextRequest) {
 
       if (!currentSession || currentSession.length === 0) {
         console.error(`Session not found for ID: ${sessionId}`);
-        await del(blobUrl);
         return NextResponse.json(
           {
             success: false,
@@ -119,15 +119,30 @@ export async function POST(request: NextRequest) {
       const session = currentSession[0];
 
       if (!session) {
-        console.error(`Session not found for ID: ${sessionId}`);
-        await del(blobUrl);
+        console.error(
+          `Session object is unexpectedly null for ID: ${sessionId}`
+        );
+        if (blobUrl) await del(blobUrl);
         return NextResponse.json(
           {
             success: false,
             error: "SESSION_NOT_FOUND",
-            message: "Session ID not found.",
+            message: "Session data could not be retrieved.",
           },
           { status: 404, headers: rateLimitHeaders }
+        );
+      }
+
+      if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+        console.log(`Validation attempt for expired session ${sessionId}.`);
+        if (blobUrl) await del(blobUrl);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "SESSION_EXPIRED",
+            message: "This analysis session has expired.",
+          },
+          { status: 410, headers: rateLimitHeaders }
         );
       }
 

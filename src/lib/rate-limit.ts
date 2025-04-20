@@ -3,8 +3,6 @@ import { Redis } from "@upstash/redis";
 
 const redisClient = Redis.fromEnv();
 
-// Define rate limit configurations
-
 // General API Limiter: Allows 5 requests per 10 seconds from a single identifier (e.g., IP or session ID)
 export const apiRateLimiter = new Ratelimit({
   redis: redisClient,

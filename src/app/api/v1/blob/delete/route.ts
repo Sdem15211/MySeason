@@ -34,6 +34,11 @@ export async function POST(request: NextRequest) {
     console.log(`Authorizing delete request for session: ${sessionId}`);
     const sessionRecord = await db.query.sessions.findFirst({
       where: eq(sessions.id, sessionId),
+      columns: {
+        // Select only necessary columns
+        id: true,
+        expiresAt: true,
+      },
     });
 
     // Allow deletion if session exists (paid or not, as errors can happen before payment)
@@ -50,8 +55,27 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // ---> Add Expiry Check <---\
+    if (
+      sessionRecord.expiresAt &&
+      new Date(sessionRecord.expiresAt) < new Date()
+    ) {
+      console.log(`Deletion attempt for expired session ${sessionId}.`);
+      // Don't proceed with deletion, just inform the client
+      return NextResponse.json(
+        {
+          success: false,
+          error: "SESSION_EXPIRED",
+          message: "This analysis session has expired, cannot delete blob.",
+        },
+        { status: 410 } // 410 Gone
+      );
+    }
+    // ---> End Expiry Check <---\
+
     console.log(
-      `Session ${sessionId} found. Proceeding with deletion of ${blobUrl}`
+      `Session ${sessionId} found and not expired. Proceeding with deletion of ${blobUrl}`
     );
     // --- End Authorization ---
 
