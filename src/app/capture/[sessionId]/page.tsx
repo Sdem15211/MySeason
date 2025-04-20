@@ -1,4 +1,8 @@
 import { MobileCameraCapture } from "@/components/features/analysis/mobile-camera-capture";
+import { db } from "@/db";
+import { sessions } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { AlertTriangle } from "lucide-react";
 
 interface CapturePageProps {
   params: {
@@ -6,28 +10,96 @@ interface CapturePageProps {
   };
 }
 
-// Use a Client Component wrapper to handle state/effects if needed,
-// or directly render if MobileCameraCapture handles everything.
-function CaptureClient({ sessionId }: { sessionId: string }) {
-  console.log("[CaptureClient] Rendering with sessionId:", sessionId);
-  // Can add more wrapper logic here if needed in the future
-  return <MobileCameraCapture sessionId={sessionId} />;
+// Renamed to clarify it's the client part
+function MobileCaptureClient({ sessionId }: { sessionId: string }) {
+  console.log("[MobileCaptureClient] Rendering with sessionId:", sessionId);
+  // Pass secondary context for the dedicated capture page
+  return <MobileCameraCapture sessionId={sessionId} context="secondary" />;
 }
 
-export default function CapturePage({ params }: CapturePageProps) {
+// Server-side function to check selfie status
+async function hasSelfieBeenValidated(sessionId: string): Promise<boolean> {
+  try {
+    console.log(
+      `[CapturePage] Checking selfie validation status for session: ${sessionId}`
+    );
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.id, sessionId),
+      columns: {
+        imageBlobUrl: true, // We only need to know if the URL exists
+        status: true, // Can also check status if needed
+      },
+    });
+
+    if (!session) {
+      console.warn(`[CapturePage] Session not found: ${sessionId}`);
+      return false; // Treat as not validated if session doesn't exist
+    }
+
+    // A selfie is considered validated if imageBlobUrl is set
+    // (This happens in the /api/v1/analysis/validate endpoint upon success)
+    const isValidated = !!session.imageBlobUrl;
+    console.log(
+      `[CapturePage] Session ${sessionId} validated status: ${isValidated}`
+    );
+    return isValidated;
+  } catch (error) {
+    console.error(
+      `[CapturePage] Error checking session status for ${sessionId}:`,
+      error
+    );
+    return false; // Assume not validated on error
+  }
+}
+
+export default async function CapturePage({ params }: CapturePageProps) {
   console.log("[CapturePage] Rendering with params:", params);
-  const { sessionId } = params;
+  const sessionId = (await params)?.sessionId; // No need for await here
 
   if (!sessionId) {
     // Handle missing session ID case
     return (
-      <div className="container mx-auto flex h-screen items-center justify-center px-4 py-8 text-center">
+      <div className="container mx-auto flex h-screen flex-col items-center justify-center px-4 py-8 text-center">
+        <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
         <h1 className="text-2xl font-bold text-red-600">Error</h1>
         <p className="text-muted-foreground">Missing session ID in URL.</p>
       </div>
     );
   }
 
+  // --- Server-Side Check ---
+  const alreadyValidated = await hasSelfieBeenValidated(sessionId);
+
+  if (alreadyValidated) {
+    return (
+      <div className="container mx-auto flex h-screen flex-col items-center justify-center px-4 py-8 text-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-12 w-12 text-green-500 mb-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <h1 className="text-2xl font-semibold mb-2">
+          Selfie Already Submitted
+        </h1>
+        <p className="text-muted-foreground max-w-md">
+          A selfie has already been successfully submitted for this analysis
+          session. You can close this page or return to your original device.
+        </p>
+      </div>
+    );
+  }
+  // --- End Server-Side Check ---
+
+  // If not validated, render the capture UI
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center">
       <h1 className="text-2xl font-semibold mb-2 text-center">
@@ -35,7 +107,7 @@ export default function CapturePage({ params }: CapturePageProps) {
       </h1>
       {/* Removed specific instructions here as they are now in the component */}
       {/* Suspense can be added if MobileCameraCapture needs it */}
-      <CaptureClient sessionId={sessionId} />
+      <MobileCaptureClient sessionId={sessionId} />
     </div>
   );
 }

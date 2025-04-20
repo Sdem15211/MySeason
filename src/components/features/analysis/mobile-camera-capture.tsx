@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface MobileCameraCaptureProps {
   sessionId: string;
+  context?: "primary" | "secondary"; // Added context prop
   onSuccess?: () => void; // Optional callback
   onError?: (message: string) => void; // Optional callback
 }
@@ -28,6 +29,7 @@ const instructionText =
 
 export function MobileCameraCapture({
   sessionId,
+  context = "primary", // Default context to primary
   onSuccess,
   onError,
 }: MobileCameraCaptureProps) {
@@ -246,13 +248,20 @@ export function MobileCameraCapture({
 
           // Success
           validationSuccessful = true; // Mark validation as successful
-          console.log("Validation successful for session:", sessionId);
+          console.log(
+            `Validation successful for session: ${sessionId}, Context: ${context}`
+          );
           setStatus("success");
           onSuccess?.();
           toast.dismiss();
-          toast.success(
-            "Selfie accepted! You can return to your other device."
-          );
+          // *** CONTEXT-AWARE TOAST ***
+          if (context === "secondary") {
+            toast.success(
+              "Selfie accepted! You can return to your other device."
+            );
+          } else {
+            toast.success("Selfie accepted!"); // Simpler message for primary context
+          }
         } catch (err: unknown) {
           console.error("Error during mobile submission:", err);
           const message =
@@ -285,7 +294,7 @@ export function MobileCameraCapture({
       "image/jpeg",
       0.9 // Match the capture format and quality
     );
-  }, [status, sessionId, onSuccess, onError]);
+  }, [status, sessionId, onSuccess, onError, context]); // Added context to dependency array
 
   const isLoading = ["uploading", "validating"].includes(status);
 
@@ -329,6 +338,7 @@ export function MobileCameraCapture({
           isLoading ||
           (status === "error" && capturedImageDataUrl)) &&
           capturedImageDataUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={capturedImageDataUrl}
               alt="Captured selfie preview"
@@ -386,7 +396,10 @@ export function MobileCameraCapture({
       {/* Success Message */}
       {status === "success" && (
         <p className="text-lg text-center font-medium text-green-600 dark:text-green-400 pt-4">
-          ✅ Success! You can now return to your original device.
+          {/* *** CONTEXT-AWARE SUCCESS MESSAGE *** */}
+          {context === "secondary"
+            ? "✅ Success! You can now return to your original device."
+            : "✅ Success! Selfie captured."}
         </p>
       )}
 

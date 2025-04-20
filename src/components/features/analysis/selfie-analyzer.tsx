@@ -173,7 +173,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
           </div>
           <div className="flex items-center justify-center space-x-2 pt-4 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Waiting for photo from phone...</span>
+            <span>Waiting for image from phone...</span>
           </div>
         </div>
       )}
@@ -183,6 +183,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
           sessionId={sessionId}
           onSuccess={handleMobileSuccess}
           onError={handleMobileError}
+          context="primary"
         />
       )}
 
