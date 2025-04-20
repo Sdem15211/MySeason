@@ -123,9 +123,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // --- 2. Update Status to Pending/Running ---
     await db
       .update(sessions)
-      .set({ status: "analysis_pending", updatedAt: new Date() })
+      .set({ status: "analysis_image_processing", updatedAt: new Date() })
       .where(eq(sessions.id, sessionId));
-    console.log(`Session ${sessionId} status updated to analysis_pending.`);
+    console.log(
+      `Session ${sessionId} status updated to analysis_image_processing.`
+    );
 
     // --- 3. Perform Analysis ---
     let analysisResult: AnalysisOutput | null = null;
@@ -145,6 +147,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const imageArrayBuffer = await imageResponse.arrayBuffer();
       const imageBuffer = Buffer.from(imageArrayBuffer);
       console.log(`   - Image downloaded successfully.`);
+
+      // --- Update status after image download/initial processing ---
+      await db
+        .update(sessions)
+        .set({ status: "analysis_feature_extraction", updatedAt: new Date() })
+        .where(eq(sessions.id, sessionId));
+      console.log(
+        `Session ${sessionId} status updated to analysis_feature_extraction.`
+      );
 
       // --- 3b. Image Processing (Facial Color Extraction) ---
       const landmarks = session.faceLandmarks as StoredLandmarks;
@@ -219,6 +230,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         questionnaireAnswers: validatedQuestionnaireData,
       };
 
+      // --- Update status before LLM call ---
+      await db
+        .update(sessions)
+        .set({ status: "analysis_generating_insights", updatedAt: new Date() })
+        .where(eq(sessions.id, sessionId));
+      console.log(
+        `Session ${sessionId} status updated to analysis_generating_insights.`
+      );
+
       // --- 3d. LLM Analysis ---
       console.log(`   - Calling LLM analysis with prepared input...`);
       analysisResult = await generateAnalysis(llmInput);
@@ -238,6 +258,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         questionnaireData: validatedQuestionnaireData,
       };
 
+      // --- Update status before saving results ---
+      await db
+        .update(sessions)
+        .set({ status: "analysis_saving_results", updatedAt: new Date() })
+        .where(eq(sessions.id, sessionId));
+      console.log(
+        `Session ${sessionId} status updated to analysis_saving_results.`
+      );
+
       await db.insert(analyses).values({
         id: newAnalysisId,
         result: analysisResult,
@@ -246,16 +275,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       finalAnalysisId = newAnalysisId;
       console.log(`   - Analysis result stored with ID: ${finalAnalysisId}`);
 
-      // --- 4. Update Session Status to Complete ---
+      // --- Update status before cleanup ---
       await db
         .update(sessions)
-        .set({
-          status: "analysis_complete",
-          analysisId: finalAnalysisId,
-          updatedAt: new Date(),
-        })
+        .set({ status: "analysis_cleaning_up", updatedAt: new Date() })
         .where(eq(sessions.id, sessionId));
-      console.log(`Session ${sessionId} status updated to analysis_complete.`);
+      console.log(
+        `Session ${sessionId} status updated to analysis_cleaning_up.`
+      );
 
       // --- 5. Cleanup Blob ---
       if (session.imageBlobUrl) {
@@ -282,6 +309,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           `   - No imageBlobUrl found for session ${sessionId} to delete.`
         );
       }
+
+      // --- FINAL Update Session Status to Complete ---
+      await db
+        .update(sessions)
+        .set({
+          status: "analysis_complete",
+          analysisId: finalAnalysisId, // finalAnalysisId will be null if pipeline failed before this
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, sessionId));
+      console.log(`Session ${sessionId} status updated to analysis_complete.`);
     } catch (pipelineError) {
       console.error(
         `Analysis pipeline failed for session ${sessionId}:`,
