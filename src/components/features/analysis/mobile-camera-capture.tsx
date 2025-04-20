@@ -98,18 +98,37 @@ export function MobileCameraCapture({
           );
           videoRef.current.srcObject = newStream;
 
+          // Event listeners MUST be added *before* playing or loading
           videoRef.current.onloadedmetadata = () => {
             if (isCancelled || !videoRef.current) return;
             console.log("[MobileCameraCapture] onloadedmetadata event fired.");
             console.log(
               `[MobileCameraCapture] Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
             );
-            setStatus("streaming"); // Move to streaming state only after metadata loads
+            // Check if video dimensions are valid before proceeding
+            if (
+              videoRef.current.videoWidth > 0 &&
+              videoRef.current.videoHeight > 0
+            ) {
+              setStatus("streaming"); // Move to streaming state
+            } else {
+              console.warn(
+                "[MobileCameraCapture] onloadedmetadata: Video dimensions are 0. Waiting..."
+              );
+              // Optionally, add a small delay and re-check, or rely on onplaying
+            }
           };
 
           videoRef.current.onplaying = () => {
-            if (isCancelled) return;
+            if (isCancelled || !videoRef.current) return;
             console.log("[MobileCameraCapture] onplaying event fired.");
+            // Ensure we transition to streaming if metadata loaded but didn't report dimensions initially
+            if (status === "initializing" && videoRef.current.videoWidth > 0) {
+              console.log(
+                "[MobileCameraCapture] onplaying: Forcing status to streaming."
+              );
+              setStatus("streaming");
+            }
           };
 
           videoRef.current.onerror = (e) => {
@@ -118,9 +137,25 @@ export function MobileCameraCapture({
             setErrorMessage("Video element failed to load the stream.");
             setStatus("error");
           };
+
           console.log(
-            "[MobileCameraCapture] useEffect[status]: srcObject assigned. Waiting for metadata..."
+            "[MobileCameraCapture] useEffect[status]: srcObject assigned. Attempting to play..."
           );
+
+          // Explicitly play the video to trigger metadata loading
+          videoRef.current.play().catch((err) => {
+            if (isCancelled) return;
+            console.error("[MobileCameraCapture] Video play() failed:", err);
+            // Handle potential autoplay restrictions
+            if (err.name === "NotAllowedError") {
+              setErrorMessage(
+                "Browser prevented camera playback. Please ensure autoplay is allowed or interact with the page."
+              );
+            } else {
+              setErrorMessage("Failed to start camera video stream.");
+            }
+            setStatus("error");
+          });
         } else {
           if (isCancelled) return;
           console.error(
