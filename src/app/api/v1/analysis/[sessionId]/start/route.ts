@@ -13,7 +13,7 @@ import {
 import { contrastRatioHex } from "@/lib/color-contrast";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
 import { LLMInput } from "@/lib/schemas/llm-input.schema";
-// import { del } from '@vercel/blob'; // Uncomment if cleanup needed
+import { del } from "@vercel/blob";
 
 export interface StoredInputData {
   extractedFeatures: ExtractedColors & {
@@ -257,10 +257,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .where(eq(sessions.id, sessionId));
       console.log(`Session ${sessionId} status updated to analysis_complete.`);
 
-      // --- 5. Cleanup (Optional - Placeholder) ---
-      // console.log(`   - Deleting blob: ${session.imageBlobUrl}`);
-      // await del(session.imageBlobUrl); // Requires import { del } from '@vercel/blob';
-      // If clearing data in step 4, no need to update again here.
+      // --- 5. Cleanup Blob ---
+      if (session.imageBlobUrl) {
+        try {
+          console.log(`   - Deleting blob: ${session.imageBlobUrl}`);
+          await del(session.imageBlobUrl as string); // Delete the blob from Vercel Blob storage
+          console.log(
+            `   - Successfully deleted blob: ${session.imageBlobUrl}`
+          );
+          await db
+            .update(sessions)
+            .set({ imageBlobUrl: null })
+            .where(eq(sessions.id, sessionId));
+        } catch (blobError) {
+          // Log the error but don't fail the entire request, as the main analysis succeeded.
+          console.error(
+            `   - Failed to delete blob ${session.imageBlobUrl}:`,
+            blobError
+          );
+          // Optionally, you could implement a retry mechanism or add this URL to a cleanup queue.
+        }
+      } else {
+        console.warn(
+          `   - No imageBlobUrl found for session ${sessionId} to delete.`
+        );
+      }
     } catch (pipelineError) {
       console.error(
         `Analysis pipeline failed for session ${sessionId}:`,
@@ -286,11 +307,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // --- 6. Return Success Response ---
-    // Since the client polls /status, this endpoint could technically return success
-    // right after setting status to 'analysis_pending'.
-    // However, the current implementation waits for the synchronous pipeline.
-    // Returning the analysisId here might be redundant if polling is working,
-    // but useful for direct feedback if polling isn't implemented or fails.
     return NextResponse.json(
       { success: true, analysisId: finalAnalysisId }, // analysisId might be null if pipeline failed before storing
       { status: 200 }
