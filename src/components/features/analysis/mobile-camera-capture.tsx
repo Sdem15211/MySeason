@@ -182,8 +182,9 @@ export function MobileCameraCapture({
       onError?.(message);
       toast.error(message);
     }
-    // Dependencies: Include stream, status, onError. Status is needed for the early exit check.
-  }, [stream, status, onError]);
+    // Dependencies: Only include stable functions or props that, if changed, *should* trigger a re-setup.
+    // `stream` and `status` state variables are accessed via closure, not needed here.
+  }, [onError]); // <--- REMOVED stream, status
 
   // --- Initial Mount Effect ---
   useEffect(() => {
@@ -202,12 +203,19 @@ export function MobileCameraCapture({
         "[MobileCameraCapture] Unmount cleanup: Clearing timer and stopping any active stream."
       );
       clearTimeout(timerId);
-      // Use ref callback to get stream for cleanup
-      stream?.getTracks().forEach((track) => track.stop());
+      // Access stream state directly for cleanup
+      setStream((currentStream) => {
+        if (currentStream) {
+          console.log(
+            "[MobileCameraCapture] Unmount cleanup: Stopping stream."
+          );
+          currentStream.getTracks().forEach((track) => track.stop());
+        }
+        return null; // Ensure stream state is cleared
+      });
     };
-    // Dependency: setupCamera (stable via useCallback). Stream is handled implicitly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setupCamera]); // Reverted dependencies
+    // Dependency: setupCamera should now be stable.
+  }, [setupCamera]); // <--- KEPT setupCamera, but it should be stable now
 
   // --- Capture Logic ---
   const handleCapture = useCallback(() => {
@@ -247,9 +255,8 @@ export function MobileCameraCapture({
     }
   }, [status, stream]);
 
-  // --- Retake Logic (Modified) ---
+  // --- Retake Logic (Simplified) ---
   const handleRetake = useCallback(() => {
-    // Check current status to avoid calling if already initializing etc.
     if (status !== "captured" && status !== "error") {
       console.warn(
         `[MobileCameraCapture] handleRetake called with unexpected status: ${status}`
@@ -261,18 +268,10 @@ export function MobileCameraCapture({
     // 1. Set status to initializing FIRST to ensure video element is rendered
     setStatus("initializing");
 
-    // 2. Call setupCamera *after* a minimal delay
-    // This allows React to process the state update and render the video element
-    const retakeTimeoutId = setTimeout(() => {
-      console.log(
-        "[MobileCameraCapture] handleRetake: setTimeout finished, calling setupCamera."
-      );
-      setupCamera();
-    }, 10); // Small delay (10ms)
-
-    // Optional: Clear timeout if component unmounts quickly (though unlikely here)
-    // return () => clearTimeout(retakeTimeoutId);
-  }, [status, setupCamera]); // Depend on status and setupCamera
+    // 2. Call setupCamera directly in the next render cycle triggered by setStatus
+    // The setTimeout is no longer needed as setupCamera dependency is stable
+    setupCamera();
+  }, [status, setupCamera]); // Depend on status and the now stable setupCamera
 
   // --- Submit Logic ---
   const handleSubmit = useCallback(async () => {
