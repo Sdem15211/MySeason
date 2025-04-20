@@ -19,7 +19,7 @@ export const analyses = pgTable("analyses", {
     .notNull(),
 });
 
-export const sessionStatusEnum = pgEnum("session_status", [
+export const statusEnum = pgEnum("status", [
   "pending_payment",
   "payment_complete",
   "payment_failed",
@@ -28,11 +28,6 @@ export const sessionStatusEnum = pgEnum("session_status", [
   "awaiting_questionnaire",
   "questionnaire_complete",
   "analysis_pending",
-  "analysis_image_processing",
-  "analysis_feature_extraction",
-  "analysis_generating_insights",
-  "analysis_saving_results",
-  "analysis_cleaning_up",
   "analysis_failed",
   "analysis_complete",
   "expired",
@@ -40,7 +35,7 @@ export const sessionStatusEnum = pgEnum("session_status", [
 
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  status: sessionStatusEnum("status").default("pending_payment").notNull(),
+  status: statusEnum("status").default("pending_payment").notNull(),
   paymentIntentId: text("payment_intent_id").unique(),
   imageBlobUrl: text("image_blob_url"),
   faceLandmarks: jsonb("face_landmarks"),
