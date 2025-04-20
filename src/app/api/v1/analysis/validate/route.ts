@@ -4,10 +4,12 @@ import { validateSelfieImage } from "@/lib/vision";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { apiRateLimiter } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   console.log("Received POST request to /api/v1/analysis/validate");
   let blobUrlToDelete: string | null = null;
+  let rateLimitHeaders: Record<string, string> | null = null;
 
   try {
     const { blobUrl, sessionId } = await request.json();
@@ -36,6 +38,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { success, limit, remaining, reset } = await apiRateLimiter.limit(
+      sessionId
+    );
+    rateLimitHeaders = {
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": remaining.toString(),
+      "X-RateLimit-Reset": reset.toString(),
+    };
+
+    if (!success) {
+      console.warn(`Rate limit exceeded for session: ${sessionId}`);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "RATE_LIMIT_EXCEEDED",
+          message:
+            "Rate limit exceeded for validation. Please try again later.",
+        },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+
     console.log(
       `Calling validation utility for session: ${sessionId}, Blob URL: ${blobUrl}`
     );
@@ -61,7 +85,7 @@ export async function POST(request: NextRequest) {
           error: validationResult.error,
           message: validationResult.message,
         },
-        { status }
+        { status, headers: rateLimitHeaders }
       );
     }
 
@@ -88,7 +112,7 @@ export async function POST(request: NextRequest) {
             error: "SESSION_NOT_FOUND",
             message: "Session ID not found.",
           },
-          { status: 404 }
+          { status: 404, headers: rateLimitHeaders }
         );
       }
 
@@ -103,9 +127,10 @@ export async function POST(request: NextRequest) {
             error: "SESSION_NOT_FOUND",
             message: "Session ID not found.",
           },
-          { status: 404 }
+          { status: 404, headers: rateLimitHeaders }
         );
       }
+
       if (session.status !== "payment_complete") {
         console.warn(
           `Session ${sessionId} is in unexpected state: ${session.status}. Expected 'payment_complete'.`
@@ -117,7 +142,7 @@ export async function POST(request: NextRequest) {
             error: "INVALID_SESSION_STATE",
             message: `Session is in an unexpected state (${session.status}).`,
           },
-          { status: 409 }
+          { status: 409, headers: rateLimitHeaders }
         );
       }
 
@@ -141,10 +166,8 @@ export async function POST(request: NextRequest) {
         {
           success: true,
           message: "Image validated and session updated.",
-          // Optionally return landmarks if needed by frontend, but not strictly necessary
-          // landmarks: validationResult.landmarks
         },
-        { status: 200 }
+        { status: 200, headers: rateLimitHeaders }
       );
     } catch (dbError) {
       console.error(
@@ -158,7 +181,7 @@ export async function POST(request: NextRequest) {
           error: "DATABASE_UPDATE_ERROR",
           message: "Failed to update session after validation.",
         },
-        { status: 500 }
+        { status: 500, headers: rateLimitHeaders }
       );
     }
   } catch (error) {
@@ -187,7 +210,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: false, error: "VALIDATION_ROUTE_ERROR", message },
-      { status: 500 }
+      { status: 500, ...(rateLimitHeaders && { headers: rateLimitHeaders }) }
     );
   }
 }

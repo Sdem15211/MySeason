@@ -10,15 +10,15 @@ import { cn } from "@/lib/utils";
 
 interface MobileCameraCaptureProps {
   sessionId: string;
-  context?: "primary" | "secondary"; // Added context prop
-  onSuccess?: () => void; // Optional callback
-  onError?: (message: string) => void; // Optional callback
+  context?: "primary" | "secondary";
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
 }
 
 type CaptureStatus =
-  | "initializing" // Camera starting up
-  | "streaming" // Camera active, ready to capture
-  | "captured" // Photo taken, showing preview
+  | "initializing"
+  | "streaming"
+  | "captured"
   | "uploading"
   | "validating"
   | "success"
@@ -29,11 +29,10 @@ const instructionText =
 
 export function MobileCameraCapture({
   sessionId,
-  context = "primary", // Default context to primary
+  context = "primary",
   onSuccess,
   onError,
 }: MobileCameraCaptureProps) {
-  console.log("[MobileCameraCapture] Component rendering started.");
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<CaptureStatus>("initializing");
@@ -45,7 +44,6 @@ export function MobileCameraCapture({
 
   // --- Camera Setup (Reverted to single function) ---
   const setupCamera = useCallback(async () => {
-    console.log("[MobileCameraCapture] Running setupCamera...");
     setStatus("initializing"); // Ensure status is set
     setCapturedImageDataUrl(null);
     setErrorMessage(null);
@@ -58,15 +56,11 @@ export function MobileCameraCapture({
     }
 
     try {
-      console.log("[MobileCameraCapture] Requesting media stream...");
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: 1280, height: 720 },
         audio: false,
       });
-      console.log("[MobileCameraCapture] Media stream acquired.", newStream);
-
       // Check if component is still mounted (or status changed) before proceeding
-      // This check might be redundant if called correctly, but adds safety
       if (status !== "initializing") {
         console.warn(
           "[MobileCameraCapture] Status changed during getUserMedia. Stopping new stream."
@@ -75,12 +69,9 @@ export function MobileCameraCapture({
         return;
       }
 
-      setStream(newStream); // Set the new stream state
+      setStream(newStream);
 
       if (videoRef.current) {
-        console.log(
-          "[MobileCameraCapture] videoRef is current. Assigning srcObject..."
-        );
         videoRef.current.srcObject = newStream;
 
         // --- Event Listeners ---
@@ -92,10 +83,6 @@ export function MobileCameraCapture({
             );
             return;
           }
-          console.log("[MobileCameraCapture] onloadedmetadata event fired.");
-          console.log(
-            `[MobileCameraCapture] Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
-          );
           if (
             videoRef.current.videoWidth > 0 &&
             videoRef.current.videoHeight > 0
@@ -110,17 +97,10 @@ export function MobileCameraCapture({
 
         videoRef.current.onplaying = () => {
           if (!videoRef.current) {
-            console.warn(
-              "[MobileCameraCapture] onplaying: videoRef became null."
-            );
             return;
           }
-          console.log("[MobileCameraCapture] onplaying event fired.");
           // Fallback: if still initializing but playing, set to streaming
           if (status === "initializing" && videoRef.current.videoWidth > 0) {
-            console.log(
-              "[MobileCameraCapture] onplaying: Forcing status to streaming."
-            );
             setStatus("streaming");
           }
         };
@@ -132,9 +112,6 @@ export function MobileCameraCapture({
         };
         // --- End Event Listeners ---
 
-        console.log(
-          "[MobileCameraCapture] srcObject assigned. Attempting to play..."
-        );
         // Attempt to play
         videoRef.current.play().catch((err) => {
           console.error("[MobileCameraCapture] Video play() failed:", err);
@@ -184,38 +161,27 @@ export function MobileCameraCapture({
     }
     // Dependencies: Only include stable functions or props that, if changed, *should* trigger a re-setup.
     // `stream` and `status` state variables are accessed via closure, not needed here.
-  }, [onError]); // <--- REMOVED stream, status
+  }, [onError]);
 
   // --- Initial Mount Effect ---
   useEffect(() => {
-    console.log("[MobileCameraCapture] Mount effect running.");
     // Use a small timeout to ensure DOM is ready before setup
     const timerId = setTimeout(() => {
-      console.log(
-        "[MobileCameraCapture] Mount effect: Timer expired, calling setupCamera."
-      );
       setupCamera(); // Direct call to setupCamera
     }, 100);
 
     // --- Component Unmount Cleanup ---
     return () => {
-      console.log(
-        "[MobileCameraCapture] Unmount cleanup: Clearing timer and stopping any active stream."
-      );
       clearTimeout(timerId);
       // Access stream state directly for cleanup
       setStream((currentStream) => {
         if (currentStream) {
-          console.log(
-            "[MobileCameraCapture] Unmount cleanup: Stopping stream."
-          );
           currentStream.getTracks().forEach((track) => track.stop());
         }
-        return null; // Ensure stream state is cleared
+        return null;
       });
     };
-    // Dependency: setupCamera should now be stable.
-  }, [setupCamera]); // <--- KEPT setupCamera, but it should be stable now
+  }, [setupCamera]);
 
   // --- Capture Logic ---
   const handleCapture = useCallback(() => {
@@ -227,27 +193,22 @@ export function MobileCameraCapture({
     )
       return;
 
-    console.log("Capturing photo...");
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    // Set canvas size to match video stream dimensions for accurate capture
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const context = canvas.getContext("2d");
     if (context) {
-      // Flip the image horizontally if desired (like a mirror)
       context.scale(-1, 1);
       context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-      context.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+      context.setTransform(1, 0, 0, 1, 0, 0);
 
       const dataUrl = canvas.toDataURL("image/jpeg", 0.9); // Use JPEG with 90% quality
       setCapturedImageDataUrl(dataUrl);
       setStatus("captured");
-      console.log("Photo captured.");
-      // Stop the stream *after* capture to show the preview
       stream.getTracks().forEach((track) => track.stop());
-      setStream(null); // Clear the stream state
+      setStream(null);
     } else {
       console.error("Could not get canvas context.");
       setErrorMessage("Failed to process image capture.");
@@ -263,15 +224,11 @@ export function MobileCameraCapture({
       );
       return;
     }
-    console.log(`[MobileCameraCapture] Retaking photo from status: ${status}`);
 
-    // 1. Set status to initializing FIRST to ensure video element is rendered
     setStatus("initializing");
 
-    // 2. Call setupCamera directly in the next render cycle triggered by setStatus
-    // The setTimeout is no longer needed as setupCamera dependency is stable
     setupCamera();
-  }, [status, setupCamera]); // Depend on status and the now stable setupCamera
+  }, [status, setupCamera]);
 
   // --- Submit Logic ---
   const handleSubmit = useCallback(async () => {
@@ -279,7 +236,6 @@ export function MobileCameraCapture({
 
     setStatus("uploading");
     setErrorMessage(null);
-    console.log(`Submitting photo for session ${sessionId}...`);
 
     canvasRef.current.toBlob(
       async (blob) => {
@@ -295,41 +251,33 @@ export function MobileCameraCapture({
 
         const filename = `${sessionId}-selfie.jpg`;
         let uploadedBlob: PutBlobResult | null = null;
-        let validationSuccessful = false; // Flag to track validation step
+        let validationSuccessful = false;
 
         try {
           // 1. Upload
-          console.log(`Uploading blob: ${filename}`);
           toast.info("Uploading photo...");
           uploadedBlob = await upload(filename, blob, {
             access: "public",
             handleUploadUrl: `/api/v1/blob/upload?sessionId=${sessionId}`, // Pass sessionId here
           });
-          console.log("Upload complete:", uploadedBlob);
 
           if (!uploadedBlob?.url) {
             throw new Error("Blob upload failed: No URL returned.");
           }
-          toast.dismiss(); // Clear previous toasts
+          toast.dismiss();
           toast.info("Validating photo...");
-          // 2. Validate
           setStatus("validating");
-          console.log(
-            `Validating blob ${uploadedBlob.url} for session ${sessionId}`
-          );
           const validateResponse = await fetch("/api/v1/analysis/validate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               blobUrl: uploadedBlob.url,
-              sessionId, // Pass sessionId here too
+              sessionId,
             }),
           });
           const validateData = await validateResponse.json();
-          console.log("Validation response:", validateData);
 
           if (!validateResponse.ok || !validateData.success) {
-            // Validation failed, keep blobResult for potential deletion
             throw new Error(
               validateData.message ||
                 "Photo validation failed. It might be blurry, poorly lit, or the face wasn't detected clearly."
@@ -337,10 +285,7 @@ export function MobileCameraCapture({
           }
 
           // Success
-          validationSuccessful = true; // Mark validation as successful
-          console.log(
-            `Validation successful for session: ${sessionId}, Context: ${context}`
-          );
+          validationSuccessful = true;
           setStatus("success");
           onSuccess?.();
           toast.dismiss();
@@ -350,7 +295,7 @@ export function MobileCameraCapture({
               "Selfie accepted! You can return to your other device."
             );
           } else {
-            toast.success("Selfie accepted!"); // Simpler message for primary context
+            toast.success("Selfie accepted!");
           }
         } catch (err: unknown) {
           console.error("Error during mobile submission:", err);
@@ -359,10 +304,10 @@ export function MobileCameraCapture({
               ? err.message
               : "An unexpected error occurred during processing.";
           setErrorMessage(message);
-          setStatus("error"); // Set status to error to show error message and retake option
+          setStatus("error");
           onError?.(message);
           toast.dismiss();
-          toast.error(message, { duration: 8000 }); // Show error for longer
+          toast.error(message, { duration: 8000 });
 
           // Attempt to delete blob only if upload succeeded but validation failed OR another error occurred after upload
           if (uploadedBlob?.url && !validationSuccessful) {

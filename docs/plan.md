@@ -123,14 +123,14 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
   - [x] Handle redirection to Stripe checkout page.
   - [x] Implement UI for handling return URLs (success: `src/app/payment-success/page.tsx`).
 - [x] **Selfie Upload UI (`src/components/features/analysis/selfie-analyzer.tsx`)**
-  - [ ] Create dedicated page/component for selfie upload instructions.
-  - [ ] **Desktop Flow:**
-    - [ ] Implement QR code generation (e.g., `react-qr-code`) linked to a unique session identifier.
-    - [ ] Implement mechanism to check for completion from the mobile flow (e.g., WebSocket, polling).
-  - [ ] **Mobile/QR Flow:**
-    - [ ] Implement camera access using `getUserMedia`.
+  - [x] Create dedicated page/component for selfie upload instructions.
+  - [x] **Desktop Flow:**
+    - [x] Implement QR code generation (e.g., `react-qr-code`) linked to a unique session identifier.
+    - [x] Implement mechanism to check for completion from the mobile flow (e.g., WebSocket, polling).
+  - [x] **Mobile/QR Flow:**
+    - [x] Implement camera access using `getUserMedia`.
     - [ ] Implement camera overlay guide (HTML/CSS/SVG).
-    - [ ] Implement capture, preview, and upload logic.
+    - [x] Implement capture, preview, and upload logic.
   - [x] Send image file to the backend upload endpoint.
 - [x] **Image Quality Feedback UI**
   - [x] Display specific error messages based on backend validation response (via `toast` in `SelfieAnalyzer`).
@@ -167,7 +167,7 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 - [x] Navigate user to the results page (`/analysis/result/[analysisId]`) upon completion.
 - [x] Connect results page data fetching to the backend retrieval endpoint.
 - [ ] Connect "View Previous Analysis" input to the backend retrieval endpoint.
-- [ ] Test the end-to-end QR code flow synchronization between desktop and mobile contexts.
+- [x] Test the end-to-end QR code flow synchronization between desktop and mobile contexts.
 
 ## 7. Testing
 

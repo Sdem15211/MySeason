@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { questionnaireSchema } from "@/lib/schemas/questionnaire";
+import { apiRateLimiter } from "@/lib/rate-limit";
 
 // Define the expected params structure from the dynamic route
 interface RouteParams {
@@ -28,6 +29,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  // --- Rate Limiting ---
+  const { success, limit, remaining, reset } = await apiRateLimiter.limit(
+    sessionId
+  );
+  const rateLimitHeaders = {
+    "X-RateLimit-Limit": limit.toString(),
+    "X-RateLimit-Remaining": remaining.toString(),
+    "X-RateLimit-Reset": reset.toString(),
+  };
+
+  if (!success) {
+    console.warn(`Rate limit exceeded for session: ${sessionId}`);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "RATE_LIMIT_EXCEEDED",
+        message:
+          "Rate limit exceeded for questionnaire submission. Please try again later.",
+      },
+      { status: 429, headers: rateLimitHeaders }
+    );
+  }
+  // --- End Rate Limiting ---
+
   let requestBody;
   try {
     requestBody = await request.json();
@@ -43,7 +68,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         error: "INVALID_JSON_BODY",
         message: "Could not parse request body as JSON.",
       },
-      { status: 400 }
+      { status: 400, headers: rateLimitHeaders }
     );
   }
 
@@ -62,7 +87,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         message: "Submitted data failed validation.",
         details: validationResult.error.flatten(), // Provide specific validation errors
       },
-      { status: 400 }
+      { status: 400, headers: rateLimitHeaders }
     );
   }
 
@@ -91,7 +116,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error: "SESSION_NOT_FOUND",
           message: "Session ID not found.",
         },
-        { status: 404 }
+        { status: 404, headers: rateLimitHeaders }
       );
     }
 
@@ -101,7 +126,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.error(
         `Questionnaire submission: Session not found for ID: ${sessionId}`
       );
-      return NextResponse.json({ success: false }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "SESSION_NOT_FOUND" },
+        { status: 404, headers: rateLimitHeaders }
+      );
     }
 
     // Check expiry
@@ -115,7 +143,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error: "SESSION_EXPIRED",
           message: "This analysis session has expired.",
         },
-        { status: 410 } // 410 Gone is appropriate for expired resources
+        { status: 410, headers: rateLimitHeaders }
       );
     }
 
@@ -130,7 +158,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error: "INVALID_SESSION_STATE",
           message: `Session is not awaiting questionnaire (current status: ${session.status}).`,
         },
-        { status: 409 } // Conflict
+        { status: 409, headers: rateLimitHeaders }
       );
     }
 
@@ -148,7 +176,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       `Session ${sessionId} updated successfully with questionnaire data. Status set to questionnaire_complete.`
     );
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(
+      { success: true },
+      { status: 200, headers: rateLimitHeaders }
+    );
   } catch (dbError) {
     console.error(
       `Database error processing questionnaire for session ${sessionId}:`,
@@ -161,7 +192,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         message:
           "An internal error occurred while saving the questionnaire data.",
       },
-      { status: 500 }
+      { status: 500, headers: rateLimitHeaders }
     );
   }
 }

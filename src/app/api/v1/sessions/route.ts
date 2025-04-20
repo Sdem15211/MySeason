@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import Stripe from "stripe";
 import { generateUUID } from "@/lib/utils";
 import { db } from "@/db/index";
 import { sessions } from "@/db/schema";
 import { withErrorHandler } from "@/lib/api-helpers";
+import { headers } from "next/headers";
+import { sessionCreateRateLimiter } from "@/lib/rate-limit";
 
 const SESSION_TTL_MINUTES = 60;
 
@@ -37,7 +39,7 @@ const stripe = new Stripe(stripeSecretKey!, {
  * creates a corresponding Stripe Checkout session, and returns the internal
  * session ID and the Stripe checkout URL to the client.
  */
-const createSessionAndCheckout = async () => {
+const createSessionAndCheckoutLogic = async () => {
   if (!stripePriceId || !appUrl) {
     throw new Error(
       "Server configuration error: Missing Stripe Price ID or App URL."
@@ -93,4 +95,37 @@ const createSessionAndCheckout = async () => {
   }
 };
 
-export const POST = withErrorHandler(createSessionAndCheckout);
+const protectedCreateSessionAndCheckout = withErrorHandler(
+  createSessionAndCheckoutLogic
+);
+
+export async function POST(request: NextRequest, context: {}) {
+  const ip = (await headers()).get("x-forwarded-for") ?? "127.0.0.1";
+
+  const { success, limit, remaining, reset } =
+    await sessionCreateRateLimiter.limit(ip);
+
+  if (!success) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
+  }
+
+  const response = await protectedCreateSessionAndCheckout(request, context);
+
+  if (response.ok) {
+    response.headers.set("X-RateLimit-Limit", limit.toString());
+    response.headers.set("X-RateLimit-Remaining", remaining.toString());
+    response.headers.set("X-RateLimit-Reset", reset.toString());
+  }
+
+  return response;
+}

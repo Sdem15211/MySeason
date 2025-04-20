@@ -14,6 +14,7 @@ import { contrastRatioHex } from "@/lib/color-contrast";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
 import { LLMInput } from "@/lib/schemas/llm-input.schema";
 import { del } from "@vercel/blob";
+import { apiRateLimiter } from "@/lib/rate-limit";
 
 export interface StoredInputData {
   extractedFeatures: ExtractedColors & {
@@ -49,6 +50,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  // --- Rate Limiting ---
+  const { success, limit, remaining, reset } = await apiRateLimiter.limit(
+    sessionId
+  );
+  const rateLimitHeaders = {
+    "X-RateLimit-Limit": limit.toString(),
+    "X-RateLimit-Remaining": remaining.toString(),
+    "X-RateLimit-Reset": reset.toString(),
+  };
+
+  if (!success) {
+    console.warn(`Rate limit exceeded for session start: ${sessionId}`);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "RATE_LIMIT_EXCEEDED",
+        message:
+          "Rate limit exceeded for starting analysis. Please try again later.",
+      },
+      { status: 429, headers: rateLimitHeaders }
+    );
+  }
+  // --- End Rate Limiting ---
+
   let session;
   try {
     // --- 1. Fetch Session and Verify Status ---
@@ -71,17 +96,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.error(`Start analysis: Session not found for ID: ${sessionId}`);
       return NextResponse.json(
         { success: false, error: "SESSION_NOT_FOUND" },
-        { status: 404 }
+        { status: 404, headers: rateLimitHeaders }
       );
     }
 
     // Check expiry
     if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
       console.log(`Start analysis: Session ${sessionId} has expired.`);
-      // Consider updating status to 'expired' here?
       return NextResponse.json(
         { success: false, error: "SESSION_EXPIRED" },
-        { status: 410 }
+        { status: 410, headers: rateLimitHeaders }
       );
     }
 
@@ -96,7 +120,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error: "INVALID_SESSION_STATE",
           message: `Session status is ${session.status}`,
         },
-        { status: 409 }
+        { status: 409, headers: rateLimitHeaders }
       );
     }
 
@@ -305,7 +329,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // --- 6. Return Success Response ---
     return NextResponse.json(
       { success: true, analysisId: finalAnalysisId }, // analysisId might be null if pipeline failed before storing
-      { status: 200 }
+      { status: 200, headers: rateLimitHeaders }
     );
   } catch (error) {
     console.error(
@@ -344,7 +368,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             ? error.message
             : "An internal error occurred.",
       },
-      { status: 500 }
+      { status: 500, ...(rateLimitHeaders && { headers: rateLimitHeaders }) }
     );
   }
 }
