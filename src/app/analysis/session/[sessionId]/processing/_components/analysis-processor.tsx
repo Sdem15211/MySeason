@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react"; // Using lucide for loading spinner
-import Link from "next/link"; // Import Link
 
 interface AnalysisProcessorProps {
   sessionId: string;
@@ -47,7 +46,7 @@ interface StatusResponse {
 const POLLING_INTERVAL_MS = 3000; // Poll every 3 seconds
 const MAX_POLLING_ATTEMPTS = 30; // Increase attempts slightly for more steps (30 * 3s = 90s)
 
-// --- NEW: Define Mock Messages & Timings ---
+// --- Define Mock Messages & Timings ---
 const mockProgressSteps = [
   { message: "Analyzing your image...", duration: 2000 }, // 2 seconds
   {
@@ -57,7 +56,6 @@ const mockProgressSteps = [
   { message: "Generating your analysis...", duration: 7000 }, // 7 seconds
   { message: "Putting it all together...", duration: 3000 }, // 3 seconds
 ];
-// --- END NEW ---
 
 export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
   const router = useRouter();
@@ -72,39 +70,42 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
 
   // --- Effect to start analysis POST and Mock Progress Sequence ---
   useEffect(() => {
-    if (hasStartedAnalysis.current || status !== "idle") {
-      return;
-    }
+    // Ensure this effect runs only once per session ID load initially
+    if (hasStartedAnalysis.current) return;
     hasStartedAnalysis.current = true;
-    setStatus("starting"); // Indicate the overall process has begun
+
+    setStatus("starting");
     setError(null);
-    setProgressMessage("Initializing analysis..."); // Set initial message
+    setProgressMessage("Initializing analysis...");
 
     console.log(
-      `ProcessingPage: Triggering analysis for session ${sessionId}...`
+      `ProcessingPage: Starting analysis process for session ${sessionId}...`
     );
 
     // --- Start Mock Progress Timers ---
+    mockProgressTimeouts.current = []; // Clear any previous timeouts (safety)
     let cumulativeDelay = 0;
     mockProgressSteps.forEach((step) => {
       cumulativeDelay += step.duration;
       const timeoutId = setTimeout(() => {
-        // Only update if still in a processing state
+        // Use a state check inside the timeout to avoid setting message after completion/failure
         setStatus((currentStatus) => {
-          if (currentStatus === "processing" || currentStatus === "starting") {
+          // Only update message if process is still in a preliminary state
+          if (currentStatus === "starting" || currentStatus === "processing") {
             setProgressMessage(step.message);
-            return currentStatus; // Keep status as processing/starting
           }
-          return currentStatus; // Don't change status if complete/failed
+          // Don't change the status itself here; polling or API failure will do that
+          return currentStatus;
         });
       }, cumulativeDelay);
       mockProgressTimeouts.current.push(timeoutId);
     });
     // --- End Mock Progress Timers ---
 
-    // --- Initiate Backend Analysis (Runs in parallel to mock progress) ---
+    // --- Initiate Backend Analysis ---
     const startAnalysisApiCall = async () => {
       try {
+        console.log(`   - Sending POST /api/v1/analysis/${sessionId}/start`);
         const response = await fetch(`/api/v1/analysis/${sessionId}/start`, {
           method: "POST",
         });
@@ -119,25 +120,25 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
         }
 
         console.log(
-          `ProcessingPage: Analysis POST request successful for session ${sessionId}. Polling will determine completion.`
+          `   - POST successful. Transitioning to processing status.`
         );
-        // Transition to processing status, indicating polling should be active
-        setStatus("processing");
-
-        // NOTE: We don't wait for this POST to finish before showing mock progress.
-        // The actual completion is determined by the polling mechanism below.
+        // Transition to processing status *after* successful POST.
+        // This triggers the polling useEffect.
+        setStatus((currentStatus) =>
+          currentStatus === "starting" ? "processing" : currentStatus
+        );
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "An unknown error occurred.";
         console.error(
-          `ProcessingPage: Error starting analysis POST for ${sessionId}:`,
+          `ProcessingPage: Error in startAnalysisApiCall for ${sessionId}:`,
           err
         );
         setError(message);
-        setStatus("failed");
-        setProgressMessage("Error initiating analysis."); // Update message on failure
+        setStatus("failed"); // Set final failed status
+        setProgressMessage("Error initiating analysis."); // Set error message
         toast.error(`Error: ${message}`);
-        // Clear any pending mock timeouts if the start call fails
+        // Clear mock timeouts on initial POST failure
         mockProgressTimeouts.current.forEach(clearTimeout);
         mockProgressTimeouts.current = [];
       }
@@ -145,18 +146,28 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
 
     startAnalysisApiCall();
 
-    // --- Cleanup function for timeouts on unmount ---
+    // Cleanup timeouts on unmount
     return () => {
+      console.log(
+        `AnalysisProcessor unmounting or sessionId changing (${sessionId}), clearing timeouts.`
+      );
       mockProgressTimeouts.current.forEach(clearTimeout);
       mockProgressTimeouts.current = [];
+      // Reset ref if sessionId changes causing re-run
+      hasStartedAnalysis.current = false;
     };
-  }, [sessionId, status]); // status dependency is okay here
+    // Run only when sessionId changes
+  }, [sessionId]);
 
   // --- Effect for Polling FINAL Status (Complete/Failed) ---
   useEffect(() => {
-    // Only poll if the backend process has potentially started and we are waiting
-    if (status !== "processing") return;
+    // Only poll if the status is 'processing'
+    if (status !== "processing") {
+      // Stop polling if status changes from 'processing' (e.g., to complete/failed)
+      return;
+    }
 
+    // Check for max attempts before setting interval
     if (pollingAttempts >= MAX_POLLING_ATTEMPTS) {
       console.error(
         `ProcessingPage: Max polling attempts reached for session ${sessionId}.`
@@ -170,97 +181,156 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
       // Clear mock timeouts if polling times out
       mockProgressTimeouts.current.forEach(clearTimeout);
       mockProgressTimeouts.current = [];
-      return;
+      return; // Exit effect, interval won't be set
     }
 
+    console.log(
+      `ProcessingPage: Setting up polling interval for ${sessionId}. Attempt ${
+        pollingAttempts + 1
+      }`
+    );
+
     const intervalId = setInterval(async () => {
+      // Increment attempts inside the interval callback before the async operation
+      // This ensures we track attempts even if the component re-renders during the fetch
+      setPollingAttempts((prev) => prev + 1);
+
+      // Check attempts again *inside* the interval using the latest state value
+      // This is a safety check in case the state update wasn't immediate
+      if (pollingAttempts + 1 > MAX_POLLING_ATTEMPTS) {
+        console.warn(
+          `Polling interval check: Max attempts (${MAX_POLLING_ATTEMPTS}) reached for ${sessionId}. Stopping poll.`
+        );
+        // Status will be set to failed by the outer check in the next effect run.
+        // No need to set status here, just clear interval.
+        clearInterval(intervalId);
+        return;
+      }
+
       console.log(
         `ProcessingPage: Polling FINAL status for session ${sessionId}... Attempt ${
-          pollingAttempts + 1
+          pollingAttempts + 1 // Use updated count for logging
         }`
       );
-      setPollingAttempts((prev) => prev + 1);
 
       try {
         const response = await fetch(`/api/v1/analysis/${sessionId}/status`);
         const result: StatusResponse = await response.json();
 
-        if (!response.ok || !result.success) {
-          throw new Error(
-            result.message || result.error || "Failed to get analysis status."
-          );
-        }
-
-        const backendStatus = result.status;
-        console.log(
-          `ProcessingPage: Received FINAL status check for ${sessionId}: ${backendStatus}`
-        );
-
-        // --- Simplified Status Handling for Polling ---
-        if (backendStatus === "analysis_complete") {
-          // Clear any remaining mock timeouts
-          mockProgressTimeouts.current.forEach(clearTimeout);
-          mockProgressTimeouts.current = [];
-
-          setStatus("complete");
-          setProgressMessage("Analysis complete!"); // Set final message
-          toast.success("Analysis complete! Redirecting...");
-
-          if (result.analysisId) {
-            setTimeout(() => {
-              router.push(`/analysis/result/${result.analysisId}`);
-            }, 1000);
-          } else {
-            console.error(
-              `ProcessingPage: Analysis complete for ${sessionId} but analysisId is missing.`
-            );
-            setError("Analysis complete, but could not find the result ID.");
-            setStatus("failed");
-            setProgressMessage("Error retrieving results.");
-            toast.error("Failed to retrieve analysis result ID.");
+        // Check status immediately after fetch completes to see if we should still process it
+        let shouldProcessResult = true;
+        setStatus((currentState) => {
+          if (currentState !== "processing") {
+            shouldProcessResult = false; // Status changed while fetch was in flight
           }
-          clearInterval(intervalId); // Stop polling
-        } else if (backendStatus === "analysis_failed") {
-          // Clear any remaining mock timeouts
-          mockProgressTimeouts.current.forEach(clearTimeout);
-          mockProgressTimeouts.current = [];
+          return currentState;
+        });
 
-          setError(result.message || "Analysis process failed.");
-          setStatus("failed");
-          setProgressMessage(
-            result.message || "Analysis failed. Please try again."
-          );
-          toast.error(result.message || "Analysis failed.");
-          clearInterval(intervalId); // Stop polling
-        } else {
-          // Backend is still working (e.g., analysis_pending)
-          // Do nothing, let the mock progress messages continue or finish
-          // Polling loop continues...
+        if (!shouldProcessResult) {
           console.log(
-            `   - Backend status is ${backendStatus}, continuing poll.`
+            `   - Status changed during fetch for ${sessionId}. Aborting result processing.`
           );
+          clearInterval(intervalId); // Stop this interval
+          return;
         }
-        // --- End Simplified Status Handling ---
-      } catch (err) {
-        // Clear any remaining mock timeouts
-        mockProgressTimeouts.current.forEach(clearTimeout);
-        mockProgressTimeouts.current = [];
 
-        const message =
-          err instanceof Error ? err.message : "An unknown error occurred.";
+        if (!response.ok || !result.success) {
+          // Handle specific errors like session not found
+          if (response.status === 404 && result.error === "SESSION_NOT_FOUND") {
+            console.warn(
+              `Polling: Session ${sessionId} not found. Assuming failure/expiry.`
+            );
+            setError(
+              "Analysis session could not be found. It might have expired."
+            );
+            setStatus("failed");
+            setProgressMessage("Session not found.");
+            toast.error("Analysis session not found.");
+          } else {
+            throw new Error(
+              result.message || result.error || "Failed to get analysis status."
+            );
+          }
+        } else {
+          const backendStatus = result.status;
+          console.log(
+            `ProcessingPage: Received FINAL status check for ${sessionId}: ${backendStatus}`
+          );
+
+          // Check final states
+          if (backendStatus === "analysis_complete") {
+            console.log(
+              `   - Status is complete. Clearing timeouts and stopping poll.`
+            );
+            mockProgressTimeouts.current.forEach(clearTimeout);
+            mockProgressTimeouts.current = [];
+            setStatus("complete"); // This will trigger effect cleanup
+            setProgressMessage("Analysis complete!");
+            toast.success("Analysis complete! Redirecting...");
+
+            if (result.analysisId) {
+              setTimeout(() => {
+                router.push(`/analysis/result/${result.analysisId}`);
+              }, 1000); // Keep redirect delay
+            } else {
+              console.error(
+                `ProcessingPage: Analysis complete for ${sessionId} but analysisId is missing.`
+              );
+              setError("Analysis complete, but could not find the result ID.");
+              setStatus("failed"); // Treat as failure if ID is missing
+              setProgressMessage("Error retrieving results.");
+              toast.error("Failed to retrieve analysis result ID.");
+            }
+            // No need to clear interval here, effect cleanup handles it when status changes
+          } else if (backendStatus === "analysis_failed") {
+            console.log(
+              `   - Status is failed. Clearing timeouts and stopping poll.`
+            );
+            mockProgressTimeouts.current.forEach(clearTimeout);
+            mockProgressTimeouts.current = [];
+            setError(result.message || "Analysis process failed.");
+            setStatus("failed"); // This will trigger effect cleanup
+            setProgressMessage(
+              result.message || "Analysis failed. Please try again."
+            );
+            toast.error(result.message || "Analysis failed.");
+            // No need to clear interval here, effect cleanup handles it
+          } else {
+            // Backend is still working (e.g., analysis_pending)
+            console.log(
+              `   - Backend status is ${backendStatus}, continuing poll.`
+            );
+            // Polling continues...
+          }
+        }
+      } catch (err) {
+        // Error during polling fetch/processing
         console.error(
-          `ProcessingPage: Error polling status for ${sessionId}:`,
+          `ProcessingPage: Error during polling fetch for ${sessionId}:`,
           err
         );
+        const message =
+          err instanceof Error ? err.message : "An unknown error occurred.";
         setError(message);
-        setStatus("failed");
+        setStatus("failed"); // This will trigger effect cleanup
         setProgressMessage("Error checking status.");
         toast.error(`Error checking status: ${message}`);
-        clearInterval(intervalId);
+        // Clear mock timeouts on polling error
+        mockProgressTimeouts.current.forEach(clearTimeout);
+        mockProgressTimeouts.current = [];
+        // No need to clear interval here, effect cleanup handles it
       }
     }, POLLING_INTERVAL_MS);
 
-    return () => clearInterval(intervalId);
+    // Cleanup function for *this* effect instance
+    return () => {
+      console.log(
+        `Clearing polling interval for ${sessionId}. Current status: ${status}`
+      );
+      clearInterval(intervalId);
+    };
+    // Re-run effect if status changes (to start/stop polling)
+    // or pollingAttempts changes (to re-evaluate max attempts at the start)
   }, [status, sessionId, router, pollingAttempts]);
 
   return (
@@ -268,7 +338,15 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
       {/* Display the dynamic progress message */}
       <p className="text-center h-10">{progressMessage}</p>{" "}
-      {/* Added fixed height */}
+      {/* Kept fixed height */}
+      {/* Optional: Display error message if needed */}
+      {status === "failed" && error && (
+        <p className="text-sm text-red-600 dark:text-red-500 mt-2 text-center">
+          {error}
+          {/* Consider adding a retry or contact support link here */}
+          {/* <Link href="/support" className="underline ml-1">Contact Support</Link> */}
+        </p>
+      )}
     </div>
   );
 }

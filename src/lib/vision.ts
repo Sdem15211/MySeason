@@ -1,7 +1,6 @@
 import { ImageAnnotatorClient, protos } from "@google-cloud/vision";
 import { google } from "@google-cloud/vision/build/protos/protos";
 
-// Function to get credentials from environment variable
 const getCredentials = () => {
   const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
   if (!credentialsJson) {

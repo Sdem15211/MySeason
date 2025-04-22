@@ -101,6 +101,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select({
         id: sessions.id,
         status: sessions.status,
+        analysisId: sessions.analysisId,
         imageBlobUrl: sessions.imageBlobUrl,
         faceLandmarks: sessions.faceLandmarks,
         questionnaireData: sessions.questionnaireData,
@@ -126,6 +127,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { success: false, error: "SESSION_EXPIRED" },
         { status: 410, headers: rateLimitHeaders }
+      );
+    }
+
+    // --- Idempotency Check: If already processing or complete, return success ---
+    if (
+      sessionData.status === "analysis_pending" ||
+      sessionData.status === "analysis_complete"
+    ) {
+      console.log(
+        `Start analysis: Session ${sessionId} is already ${sessionData.status}. Returning success without re-processing.`
+      );
+      // If complete, include the existing analysisId
+      const analysisId =
+        sessionData.status === "analysis_complete"
+          ? sessionData.analysisId
+          : null;
+      return NextResponse.json(
+        { success: true, ...(analysisId && { analysisId }) },
+        {
+          status: 200,
+          headers: rateLimitHeaders,
+        }
       );
     }
 
