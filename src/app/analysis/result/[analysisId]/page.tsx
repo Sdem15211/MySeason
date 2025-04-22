@@ -3,6 +3,9 @@ import { analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import Link from "next/link";
+import { headers as getHeaders } from "next/headers";
+import { auth } from "@/lib/auth";
 import {
   Accordion,
   AccordionContent,
@@ -17,8 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/features/analysis/copy-button";
-import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema"; // Updated schema import
+import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
 import {
@@ -32,7 +36,8 @@ import {
   Briefcase,
   Gem,
   Shirt,
-} from "lucide-react"; // Import icons
+  UserPlus,
+} from "lucide-react";
 
 interface AnalysisResultsPageProps {
   params: {
@@ -123,6 +128,7 @@ export default async function AnalysisResultsPage({
   params,
 }: AnalysisResultsPageProps) {
   const analysisId = (await params).analysisId;
+  const headers = await getHeaders();
 
   if (!analysisId) {
     console.error("AnalysisResultsPage: Missing analysisId in params");
@@ -130,19 +136,38 @@ export default async function AnalysisResultsPage({
   }
 
   let analysisRecord;
+  let authSession;
   try {
+    const sessionPromise = auth.api.getSession({ headers });
+
     const analysisResults = await db
       .select({
         id: analyses.id,
         result: analyses.result,
         inputData: analyses.inputData,
         createdAt: analyses.createdAt,
+        userId: analyses.userId,
       })
       .from(analyses)
       .where(eq(analyses.id, analysisId))
       .limit(1);
 
     analysisRecord = analysisResults[0];
+
+    try {
+      authSession = await sessionPromise;
+      console.log(
+        `Auth session retrieved for analysis page ${analysisId}. User ID: ${
+          authSession?.user?.id ?? "Not logged in"
+        }`
+      );
+    } catch (authError) {
+      console.error(
+        `Error fetching auth session on analysis page ${analysisId}:`,
+        authError
+      );
+      authSession = null;
+    }
 
     if (!analysisRecord) {
       console.log(
@@ -164,24 +189,18 @@ export default async function AnalysisResultsPage({
   }
 
   if (!analysisRecord?.result || !analysisRecord?.inputData) {
-    // Added check for null result object
-    if (!analysisRecord?.result) {
-      console.log(
-        `AnalysisResultsPage: Analysis result is null or missing for ID: ${analysisId}`
-      );
-      // Potentially show a "processing" state if applicable, or just not found
-    } else {
-      console.log(
-        `AnalysisResultsPage: Input data missing for ID: ${analysisId}`
-      );
-    }
+    console.log(
+      `AnalysisResultsPage: Analysis result or input data is null/missing for ID: ${analysisId}`
+    );
     notFound();
   }
 
-  // *** Use the updated AnalysisOutput type ***
-  const result = analysisRecord.result as AnalysisOutput;
+  const isAnonymousUser = authSession?.user?.isAnonymous === true;
+  const analysisBelongsToCurrentUser =
+    !!analysisRecord.userId && analysisRecord.userId === authSession?.user?.id;
+  const showSavePrompt = isAnonymousUser && analysisBelongsToCurrentUser;
 
-  // Input data remains the same structure for now
+  const result = analysisRecord.result as AnalysisOutput;
   const inputData = analysisRecord.inputData as StoredInputData;
   const extractedFeatures = inputData.extractedFeatures ?? {};
   const questionnaireData = inputData.questionnaireData ?? {};
@@ -198,6 +217,28 @@ export default async function AnalysisResultsPage({
           <CopyButton textToCopy={analysisRecord.id} />
         </p>
       </div>
+
+      {/* Save Analysis Prompt (Conditional) */}
+      {showSavePrompt && (
+        <Card className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800 shadow-md">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
+            <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <div className="flex-grow">
+              <CardTitle className="text-lg text-blue-800 dark:text-blue-200">
+                Save Your Analysis
+              </CardTitle>
+              <CardDescription className="text-blue-700 dark:text-blue-300">
+                Create a free account to save this analysis permanently.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="/auth/signup">Create Account</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Season Title & Characterization */}
       <Card className="bg-gradient-to-br from-primary/10 via-background to-background border-primary/30 shadow-lg">
@@ -530,8 +571,9 @@ export default async function AnalysisResultsPage({
 
       {/* Footer */}
       <p className="mt-10 text-sm text-center text-muted-foreground">
-        Remember to save your Analysis ID ({analysisRecord.id}) or bookmark this
-        page!
+        {showSavePrompt
+          ? "Create an account to save your analysis and access it anytime."
+          : `Remember to save your Analysis ID (${analysisRecord.id}) or bookmark this page!`}
       </p>
     </div>
   );

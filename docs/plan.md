@@ -2,7 +2,7 @@
 
 ## Overview
 
-The AI Personal Color Analysis App (MySeason) provides users with an accurate and personalized color and seasonal analysis derived from a user-uploaded selfie and a brief questionnaire. It leverages Google Cloud Vision API for facial landmarks, `sharp` for image analysis, and an LLM (OpenAI/Anthropic via Vercel AI SDK) for generating the analysis. The MVP is a Next.js web application designed with a reusable backend API for a future React Native/Expo mobile app, featuring an account-less, pay-per-analysis model.
+The AI Personal Color Analysis App (MySeason) provides users with an accurate and personalized color and seasonal analysis derived from a user-uploaded selfie and a brief questionnaire. It leverages Google Cloud Vision API for facial landmarks, `sharp` for image analysis, and an LLM (OpenAI/Anthropic via Vercel AI SDK) for generating the analysis. The initial MVP is a Next.js web application that allows users to complete the analysis flow anonymously. **An optional account creation feature using Better Auth allows users to save results post-analysis.** The backend API is designed for reusability for a potential future mobile app.
 
 ## 1. Project Setup
 
@@ -240,3 +240,45 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 - [ ] **Performance Monitoring**
   - [ ] Regularly review monitoring dashboards (Vercel, Sentry, Supabase).
   - [ ] Monitor API costs and optimize if necessary.
+
+## 11. Feature: Optional Account Creation & Analysis Linking (NEW - Anonymous Plugin Approach)
+
+- [ ] **Step 1: Setup Better Auth & Anonymous Plugin**
+  - [ ] Install `@better-auth/next`, `@better-auth/plugin-anonymous`, and relevant client packages.
+  - [ ] Configure Better Auth environment variables (`.env`).
+  - [ ] Create Better Auth API route (`src/app/api/auth/[...betterauth]/route.ts`).
+  - [ ] Create/Update Better Auth configuration file (`src/lib/auth.ts`):
+    - [ ] Add `anonymous` plugin to `plugins` array.
+    - [ ] Implement `onLinkAccount` hook logic (`UPDATE analyses SET userId...`).
+    - [ ] Define standard providers (Email/Password min). Session strategy.
+  - [ ] Wrap layout (`src/app/layout.tsx`) with Better Auth client provider if needed.
+  - [ ] Configure Better Auth client instance (`src/lib/auth-client.ts`) with `anonymousClient`.
+- [ ] **Step 2: Modify Database Schema & Migrate**
+  - [ ] Ensure `userId` (nullable, foreign key type matching Better Auth ID) exists on `analyses` table in `src/db/schema.ts`.
+  - [ ] **Remove** `claimToken` from `sessions` table in `src/db/schema.ts` if previously added.
+  - [ ] Generate Drizzle migration (`pnpm drizzle-kit generate`).
+  - [ ] Apply migration (`pnpm drizzle-kit migrate` or `push`).
+- [ ] **Step 3: Initiate Anonymous Session & Store User ID**
+  - [ ] Modify client-side payment success logic (e.g., `/payment-success`): Call `authClient.signIn.anonymous()` after verifying payment.
+  - [ ] Modify `POST /api/v1/analysis/[sessionId]/start/route.ts`: Get current (anonymous) user ID via `auth()` helper and set it in the `analyses.userId` field when creating the record.
+  - [ ] Modify `GET /api/v1/analysis/[sessionId]/status/route.ts`: Remove `claimToken` from the response.
+  - [ ] Modify `AnalysisProcessor` component: Remove logic for storing/handling `claimToken`.
+- [ ] **Step 4: Update Frontend Results Page (`/analysis/[analysisId]/page.tsx`)**
+  - [ ] Fetch analysis data including `userId`.
+  - [ ] Use Better Auth client hook (`useSession`?) to get auth state.
+  - [ ] Implement conditional rendering logic for "Create Account" / "Log In" buttons based on `session.user.isAnonymous` and `analysis.userId`.
+  - [ ] Implement button handlers to trigger standard Better Auth `signUp`/`signIn` flows.
+- [ ] **Step 5: Create Profile Page**
+  - [ ] Create route `src/app/profile/page.tsx`.
+  - [ ] Protect route (check session server-side).
+  - [ ] Fetch analyses for the logged-in user based on `userId`.
+  - [ ] Display list of linked analyses.
+- [ ] **Step 6: Testing (New Feature)**
+  - [ ] Test anonymous session creation post-payment.
+  - [ ] Test analysis creation includes anonymous `userId`.
+  - [ ] Test signup flow triggers `onLinkAccount` and updates `analyses.userId`.
+  - [ ] Test login flow (linking existing anonymous session) triggers `onLinkAccount`.
+  - [ ] Test shared link scenario (User B signup doesn't affect User A's analysis).
+  - [ ] Test profile page displays correct analyses.
+  - [ ] Verify anonymous user record deletion (default behavior).
+  - [ ] Consider testing anonymous user cleanup strategy.

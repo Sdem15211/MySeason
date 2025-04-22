@@ -18,12 +18,3 @@ export const sessionCreateRateLimiter = new Ratelimit({
   analytics: true,
   prefix: "@upstash/ratelimit/session-create",
 });
-
-// --- Add more specific rate limiters as needed below ---
-// Example: Upload Limiter (adjust limits as necessary)
-// export const uploadRateLimiter = new Ratelimit({
-//   redis: redisClient,
-//   limiter: Ratelimit.slidingWindow(5, "1 m"), // 5 uploads / 1 minute per session
-//   analytics: true,
-//   prefix: "@upstash/ratelimit/upload",
-// });

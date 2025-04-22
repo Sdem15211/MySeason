@@ -327,7 +327,7 @@ export async function generateAnalysis(
       schema: AnalysisOutputSchema,
       prompt: userPrompt,
       system: systemPrompt,
-      temperature: 0.5,
+      temperature: 0.6,
     });
 
     console.log(

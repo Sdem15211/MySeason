@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { headers as getHeaders } from "next/headers";
 import { db } from "@/db";
 import { sessions, analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -15,6 +16,7 @@ import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
 import { LLMInput } from "@/lib/schemas/llm-input.schema";
 import { del } from "@vercel/blob";
 import { apiRateLimiter } from "@/lib/rate-limit";
+import { auth } from "@/lib/auth";
 
 export interface StoredInputData {
   extractedFeatures: ExtractedColors & {
@@ -74,8 +76,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
   // --- End Rate Limiting ---
 
-  let session;
+  let sessionData;
+  let authSession;
   try {
+    // --- 0. Get Auth Session ---
+    try {
+      const requestHeaders = await getHeaders();
+      authSession = await auth.api.getSession({ headers: requestHeaders });
+      console.log(
+        `Auth session retrieved for start request. User ID: ${
+          authSession?.user?.id ?? "Not logged in (or session error)"
+        }`
+      );
+    } catch (authError) {
+      console.error(
+        `Error retrieving auth session for ${sessionId}:`,
+        authError
+      );
+      authSession = null;
+    }
+
     // --- 1. Fetch Session and Verify Status ---
     const results = await db
       .select({
@@ -90,9 +110,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .where(eq(sessions.id, sessionId))
       .limit(1);
 
-    session = results[0];
+    sessionData = results[0];
 
-    if (!session) {
+    if (!sessionData) {
       console.error(`Start analysis: Session not found for ID: ${sessionId}`);
       return NextResponse.json(
         { success: false, error: "SESSION_NOT_FOUND" },
@@ -101,7 +121,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check expiry
-    if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
+    if (sessionData.expiresAt && new Date(sessionData.expiresAt) < new Date()) {
       console.log(`Start analysis: Session ${sessionId} has expired.`);
       return NextResponse.json(
         { success: false, error: "SESSION_EXPIRED" },
@@ -110,34 +130,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check status - Should be 'questionnaire_complete' to start
-    if (session.status !== "questionnaire_complete") {
+    if (sessionData.status !== "questionnaire_complete") {
       console.warn(
-        `Start analysis: Session ${sessionId} has invalid status: ${session.status}. Expected 'questionnaire_complete'.`
+        `Start analysis: Session ${sessionId} has invalid status: ${sessionData.status}. Expected 'questionnaire_complete'.`
       );
       return NextResponse.json(
         {
           success: false,
           error: "INVALID_SESSION_STATE",
-          message: `Session status is ${session.status}`,
+          message: `Session status is ${sessionData.status}`,
         },
         { status: 409, headers: rateLimitHeaders }
       );
     }
 
     // Check for required data
-    if (!session.imageBlobUrl) {
+    if (!sessionData.imageBlobUrl) {
       console.error(
         `Start analysis: Missing imageBlobUrl for session ${sessionId}`
       );
       throw new Error("Session is missing the image blob URL.");
     }
-    if (!session.faceLandmarks) {
+    if (!sessionData.faceLandmarks) {
       console.error(
         `Start analysis: Missing faceLandmarks for session ${sessionId}`
       );
       throw new Error("Session is missing face landmark data.");
     }
-    if (!session.questionnaireData) {
+    if (!sessionData.questionnaireData) {
       console.error(
         `Start analysis: Missing questionnaireData for session ${sessionId}`
       );
@@ -159,8 +179,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.log(`Starting analysis pipeline for session ${sessionId}...`);
 
       // --- 3a. Download Image ---
-      console.log(`   - Downloading image from: ${session.imageBlobUrl}`);
-      const imageResponse = await fetch(session.imageBlobUrl as string);
+      console.log(`   - Downloading image from: ${sessionData.imageBlobUrl}`);
+      const imageResponse = await fetch(sessionData.imageBlobUrl as string);
       if (!imageResponse.ok) {
         throw new Error(
           `Failed to download image: ${imageResponse.statusText}`
@@ -171,7 +191,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.log(`   - Image downloaded successfully.`);
 
       // --- 3b. Image Processing (Facial Color Extraction) ---
-      const landmarks = session.faceLandmarks as StoredLandmarks;
+      const landmarks = sessionData.faceLandmarks as StoredLandmarks;
       const extractedColorData: ExtractedColors = await extractFacialColors(
         imageBuffer,
         landmarks
@@ -183,7 +203,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       // --- 3c. LLM Analysis Preparation: compute contrast levels ---
       const validatedQuestionnaireData =
-        session.questionnaireData as QuestionnaireFormData;
+        sessionData.questionnaireData as QuestionnaireFormData;
 
       // Extract hex colors
       const skinHex = extractedColorData.skinColorHex;
@@ -262,26 +282,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         questionnaireData: validatedQuestionnaireData,
       };
 
+      const userIdToStore = authSession?.user?.id ?? null;
+
       await db.insert(analyses).values({
         id: newAnalysisId,
         result: analysisResult,
         inputData: inputDataForStorage,
+        userId: userIdToStore,
       });
       finalAnalysisId = newAnalysisId;
-      console.log(`   - Analysis result stored with ID: ${finalAnalysisId}`);
+      console.log(
+        `   - Analysis result stored with ID: ${finalAnalysisId} for User ID: ${userIdToStore}`
+      );
 
       // --- 5. Cleanup Blob ---
-      if (session.imageBlobUrl) {
+      if (sessionData.imageBlobUrl) {
         try {
-          console.log(`   - Deleting blob: ${session.imageBlobUrl}`);
-          await del(session.imageBlobUrl as string); // Delete the blob from Vercel Blob storage
+          console.log(`   - Deleting blob: ${sessionData.imageBlobUrl}`);
+          await del(sessionData.imageBlobUrl as string); // Delete the blob from Vercel Blob storage
           console.log(
-            `   - Successfully deleted blob: ${session.imageBlobUrl}`
+            `   - Successfully deleted blob: ${sessionData.imageBlobUrl}`
           );
         } catch (blobError) {
           // Log the error but don't fail the entire request, as the main analysis succeeded.
           console.error(
-            `   - Failed to delete blob ${session.imageBlobUrl}:`,
+            `   - Failed to delete blob ${sessionData.imageBlobUrl}:`,
             blobError
           );
           // Optionally, you could implement a retry mechanism or add this URL to a cleanup queue.
@@ -339,9 +364,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Ensure session status is marked as failed if not already handled
     // (This check might be redundant if the inner try/catch always updates on failure)
     if (
-      session &&
-      session.status !== "analysis_pending" &&
-      session.status !== "analysis_failed"
+      sessionData &&
+      sessionData.status !== "analysis_pending" &&
+      sessionData.status !== "analysis_failed"
     ) {
       try {
         await db
