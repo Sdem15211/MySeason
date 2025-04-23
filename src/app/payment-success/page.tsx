@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 import { PaymentSuccessContent } from "@/components/features/analysis/payment-success-content";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 // Initialize Stripe client
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -22,6 +24,9 @@ interface PaymentSuccessPageProps {
 export default async function PaymentSuccessPage({
   searchParams,
 }: PaymentSuccessPageProps) {
+  const authSession = await auth.api.getSession({
+    headers: await headers(),
+  });
   const stripeCheckoutId = (await searchParams)?.session_id as
     | string
     | undefined;
@@ -76,7 +81,12 @@ export default async function PaymentSuccessPage({
         `Payment verified for Stripe session ${stripeCheckoutId}, Internal session: ${internalSessionId}`
       );
       // Render the client component with the internal ID
-      return <PaymentSuccessContent internalSessionId={internalSessionId} />;
+      return (
+        <PaymentSuccessContent
+          internalSessionId={internalSessionId}
+          authSession={authSession}
+        />
+      );
     } else {
       console.warn(
         `Stripe session ${stripeCheckoutId} status not complete/paid: Status=${session.status}, PaymentStatus=${session.payment_status}`

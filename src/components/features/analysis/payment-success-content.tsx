@@ -3,14 +3,17 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { SelfieAnalyzer } from "./selfie-analyzer";
-import { signIn } from "@/lib/auth-client";
+import { signIn, useSession } from "@/lib/auth-client";
+import { Session } from "@/lib/auth";
 
 interface PaymentSuccessContentProps {
   internalSessionId: string;
+  authSession: Session | null;
 }
 
 export function PaymentSuccessContent({
   internalSessionId,
+  authSession,
 }: PaymentSuccessContentProps) {
   useEffect(() => {
     const performAnonymousSignIn = async () => {
@@ -26,7 +29,9 @@ export function PaymentSuccessContent({
       }
     };
 
-    performAnonymousSignIn();
+    if (!authSession) {
+      performAnonymousSignIn();
+    }
   }, []);
 
   return (

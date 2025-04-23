@@ -221,20 +221,24 @@ export default async function AnalysisResultsPage({
       {/* Save Analysis Prompt (Conditional) */}
       {showSavePrompt && (
         <Card className="bg-blue-50 border border-blue-200 dark:bg-blue-950 dark:border-blue-800 shadow-md">
-          <CardHeader className="flex-row items-center gap-3 space-y-0">
-            <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          <CardHeader className="flex-row items-start sm:items-center gap-3 space-y-0">
+            <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-1 sm:mt-0" />
             <div className="flex-grow">
               <CardTitle className="text-lg text-blue-800 dark:text-blue-200">
                 Save Your Analysis
               </CardTitle>
               <CardDescription className="text-blue-700 dark:text-blue-300">
-                Create a free account to save this analysis permanently.
+                Create a free account or log in to save this analysis
+                permanently.
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col sm:flex-row gap-3">
             <Button asChild className="w-full sm:w-auto">
               <Link href="/auth/signup">Create Account</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href="/auth/signin">Log In</Link>
             </Button>
           </CardContent>
         </Card>

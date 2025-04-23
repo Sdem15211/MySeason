@@ -48,7 +48,9 @@ export default async function ProfilePage() {
     console.error(`Error fetching analyses for user ${userId}:`, error);
     return (
       <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-6">My Analyses</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">My Analyses</h1>
+        </div>
         <p className="text-destructive">
           Could not load your analyses. Please try again later.
         </p>
@@ -57,9 +59,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">My Analyses</h1>
-
+    <div className="flex justify-center items-center w-screen h-screen px-4 py-12">
       {userAnalyses.length === 0 ? (
         <p className="text-muted-foreground">You have no saved analyses yet.</p>
       ) : (

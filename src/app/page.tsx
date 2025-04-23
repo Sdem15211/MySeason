@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 export default function Home() {
@@ -44,18 +45,17 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <h1 className="text-4xl font-bold mb-8">MySeason</h1>
-      <p className="mb-6 text-lg text-center max-w-md">
+      <p className="mb-6 text-lg text-center max-w-xl">
         Discover your perfect color palette with AI-powered analysis.
       </p>
-      <button
+      <Button
         onClick={handleStartAnalysis}
         disabled={isLoading}
         className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLoading ? "Processing..." : "Start New Analysis"}
-      </button>
+        {isLoading ? "Starting..." : "Start New Analysis"}
+      </Button>
       {error && <p className="mt-4 text-red-600">Error: {error}</p>}
-      {/* Add "View Previous Analysis" section later if needed */}
     </main>
   );
 }

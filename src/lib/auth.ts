@@ -49,3 +49,4 @@ export const config = {
 };
 
 export const auth = betterAuth(config);
+export type Session = typeof auth.$Infer.Session;
