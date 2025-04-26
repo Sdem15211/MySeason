@@ -51,10 +51,7 @@ export default async function QuestionnairePage({
   // Check if session has expired
   if (session.expiresAt && new Date(session.expiresAt) < new Date()) {
     console.log(`QuestionnairePage: Session ${sessionId} has expired.`);
-    // Redirect to an expired session page or home
-    // For now, just show not found, but a dedicated page is better UX
     notFound();
-    // redirect("/session-expired"); // Example redirect
   }
 
   // Check if the session status is correct
@@ -62,29 +59,17 @@ export default async function QuestionnairePage({
     console.warn(
       `QuestionnairePage: Session ${sessionId} has invalid status: ${session.status}`
     );
-    // Redirect based on status? Or just show error/not found?
-    // If already completed, maybe redirect to processing?
     if (
       session.status === "questionnaire_complete" ||
       session.status === "analysis_pending"
     ) {
-      redirect(`/analysis/${sessionId}/processing`); // Redirect if questionnaire already done
+      redirect(`/analysis/${sessionId}/processing`);
     }
-    // For other statuses, treat as invalid access
-    notFound(); // Or show an error message
+    notFound();
   }
 
-  // Session is valid and awaiting questionnaire
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Color Analysis Questionnaire
-      </h1>
-      <p className="mb-8 text-center text-muted-foreground">
-        Please answer the following questions to help us provide the most
-        accurate analysis.
-      </p>
-      {/* Render the client component responsible for the form logic */}
+    <div className="container mx-auto flex flex-col items-center justify-center h-screen">
       <QuestionnaireForm sessionId={sessionId} />
     </div>
   );

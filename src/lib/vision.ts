@@ -20,7 +20,8 @@ const getCredentials = () => {
 };
 
 const visionClient = new ImageAnnotatorClient({
-  credentials: getCredentials(),
+  credentials:
+    process.env.NODE_ENV === "production" ? getCredentials() : undefined,
 });
 
 const LIKELIHOOD_THRESHOLD: protos.google.cloud.vision.v1.Likelihood[] = [

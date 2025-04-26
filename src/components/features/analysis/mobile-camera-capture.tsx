@@ -341,26 +341,13 @@ export function MobileCameraCapture({
 
   return (
     // Adjusted main container: takes full height, uses flex column
-    <div className="flex flex-col h-full w-full max-w-md mx-auto bg-background">
-      {/* Top Text Section */}
-      {status !== "success" && (
-        <div className="flex flex-col items-center justify-center gap-2 pt-12 pb-6 shrink-0">
-          <h1 className="title">Time to take your selfie! 📸</h1>
-          <p className="subtitle">
-            Position your face within the outline and take your photo in natural
-            daylight.
-          </p>
-        </div>
-      )}
-
+    <div className="flex flex-col h-full w-full">
       {/* Canvas for processing, hidden from user */}
       <canvas ref={canvasRef} className="hidden"></canvas>
 
       {/* Camera View / Preview Area - takes remaining height */}
       <div className="relative flex-grow w-full overflow-hidden flex items-center justify-center rounded-t-4xl">
-        {/* Video/Image Container */}
         <div className="absolute inset-0">
-          {/* Render video element if initializing OR streaming */}
           {showCameraFeed && (
             <video
               ref={videoRef}
@@ -374,14 +361,12 @@ export function MobileCameraCapture({
               )}
             />
           )}
-          {/* Show initializing indicator ON TOP of the hidden video */}
           {status === "initializing" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/50">
               <Loader2 className="h-8 w-8 animate-spin mb-2 text-orange" />
               <span>Starting Camera...</span>
             </div>
           )}
-          {/* Preview Image - Render if captured, loading, or error occurred after capture */}
           {showPreview && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -393,7 +378,6 @@ export function MobileCameraCapture({
           )}
         </div>
 
-        {/* Oval Overlay */}
         {(showCameraFeed || showPreview) &&
           !isLoading &&
           status !== "success" && (
@@ -406,7 +390,6 @@ export function MobileCameraCapture({
               }}
             ></div>
           )}
-        {/* Loading Overlay (covers everything including oval) */}
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-white bg-black/60 z-10">
             <Loader2 className="h-8 w-8 animate-spin" />

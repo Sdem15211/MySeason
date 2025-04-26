@@ -5,16 +5,10 @@ import { useRouter } from "next/navigation";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -24,116 +18,149 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-// Import shared schema and type
 import {
   questionnaireSchema,
   type QuestionnaireFormData,
 } from "@/lib/schemas/questionnaire";
-// Import hair colors
-import { groupedHairColors } from "@/lib/constants/hair-colors";
-import { cn } from "@/lib/utils"; // Import cn for conditional classes
+import { naturalHairColors } from "@/lib/constants/hair-colors";
+import { cn } from "@/lib/utils";
 
 interface QuestionnaireFormProps {
   sessionId: string;
 }
 
-// Placeholder color palettes (reuse for flattering/unflattering for now)
-const colorPalettes = [
-  "Green",
-  "Brown",
-  "Red",
-  "Blue",
-  "Grey",
-  "Yellow",
-  "Orange",
-  "Purple",
-  "Pink",
-  "Black",
-  "White",
-];
-
-// --- Color Swatch Definitions ---
-const swatchSize = "h-4 w-4 rounded-sm border border-muted-foreground/50"; // Consistent swatch style
-
 const sunReactionSwatches: Record<string, string> = {
-  always_burn_rarely_tan: "#F8D7DA", // Light pink
-  burn_then_tan: "#EBC8B2", // Light tan
-  tan_easily_occasionally_burn: "#DDB89E", // Medium tan
-  always_tan_never_burn: "#C6A88C", // Deeper tan
+  always_burn_rarely_tan: "#FADADD",
+  burn_then_tan: "#F5C3A9",
+  tan_easily_occasionally_burn: "#DDB89E",
+  always_tan_never_burn: "#A67B5B",
 };
 
 const blushSwatches: Record<string, string> = {
-  rosy_pink_red: "#E57373", // Rosy red
-  peachy_golden: "#F2C797", // Peach
-  // No swatch for 'unsure'
+  rosy_pink_red: "#E84D5B",
+  peachy_golden: "#F5A76C",
+  unsure: "#CCCCCC",
 };
 
 const whiteCreamSwatches: Record<string, string> = {
   pure_white: "#FFFFFF",
-  off_white_cream: "#FFF8DC", // Cornsilk/Cream
-  // No swatch for 'both_equal'
+  off_white_cream: "#FFF5DC",
+  both_equal: "#CCCCCC",
 };
 
 const veinSwatches: Record<string, string> = {
-  blue_purple: "#9FA8DA", // Blue/Purple
-  green_olive: "#A5D6A7", // Green
-  mix_both: "#B0BEC5", // Blue Grey (Neutral mix representation)
-  // No swatch for 'unsure'
+  blue_purple: "#6A7AB5",
+  green_olive: "#7FAD8C",
+  mix_both: "#7D9AA3",
+  unsure: "#CCCCCC",
 };
 
 const jewelrySwatches: Record<string, string> = {
-  silver_white: "#E0E0E0", // Silver/Grey
-  gold_yellow: "#FFD700", // Gold
-  rose_gold_copper: "#E0BFB8", // Copper/Rose Gold
-  // No swatch for 'unsure'
+  silver_white: "#D9D9D9",
+  gold_yellow: "#F5D00C",
+  rose_gold_copper: "#D4836A",
+  unsure: "#CCCCCC",
 };
 
-// --- Define New 5 Steps --- (Order matches user request)
+// ---  Colors for Steps 7 & 8 ---
+interface PreferenceColor {
+  name: string;
+  hex: string;
+}
+
+const preferenceColors: PreferenceColor[] = [
+  { name: "Red", hex: "#D22B2B" },
+  { name: "Orange", hex: "#FF8E32" },
+  { name: "Yellow", hex: "#FFD700" },
+  { name: "Pink", hex: "#F2A7BE" },
+  { name: "Purple", hex: "#8E4585" },
+  { name: "Blue", hex: "#1E73BE" },
+  { name: "Green", hex: "#2E8B57" },
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Beige", hex: "#E6D6B8" },
+  { name: "Brown", hex: "#5D4037" },
+  { name: "Grey", hex: "#CCCCCC" },
+  { name: "Black", hex: "#000000" },
+];
+
+// --- Define 9 Steps ---
 const steps = [
   {
-    id: "step1",
-    title: "Hair Color",
+    id: "naturalHairColor",
+    title: "What is your natural hair color?",
+    subtitle:
+      "Select the swatch that is the closest match to your natural hair color",
     fields: ["naturalHairColor"] as (keyof QuestionnaireFormData)[],
   },
   {
-    id: "step2",
-    title: "Skin Reaction",
-    fields: [
-      "skinReactionToSun",
-      "blushColor",
-      "whiteOrCreamPreference",
-    ] as (keyof QuestionnaireFormData)[],
+    id: "skinReactionToSun",
+    title: "How does your skin react to sun? ☀️",
+    fields: ["skinReactionToSun"] as (keyof QuestionnaireFormData)[],
   },
   {
-    id: "step3",
-    title: "Undertone Indicators",
-    fields: [
-      "veinColor",
-      "jewelryPreference",
-    ] as (keyof QuestionnaireFormData)[],
+    id: "blushColor",
+    title: "When you blush ☺️, your skin turns:",
+    fields: ["blushColor"] as (keyof QuestionnaireFormData)[],
   },
   {
-    id: "step4",
-    title: "Color Preferences",
-    fields: [
-      "flatteringColors",
-      "unflatteringColors",
-    ] as (keyof QuestionnaireFormData)[],
+    id: "whiteOrCreamPreference",
+    title: "Which color looks best against your skin? 👕",
+    fields: ["whiteOrCreamPreference"] as (keyof QuestionnaireFormData)[],
   },
   {
-    id: "step5",
-    title: "Preferences",
+    id: "veinColor",
+    title: "The veins on your inner wrist appear mostly:",
+    fields: ["veinColor"] as (keyof QuestionnaireFormData)[],
+  },
+  {
+    id: "jewelryPreference",
+    title: "Which metal best complements your skin tone? 💎",
+    fields: ["jewelryPreference"] as (keyof QuestionnaireFormData)[],
+  },
+  {
+    id: "flatteringColors",
+    title: "Which color gets you the most compliments? 👑",
+    fields: ["flatteringColors"] as (keyof QuestionnaireFormData)[],
+  },
+  {
+    id: "unflatteringColors",
+    title: "Which color makes you look tired? 😴",
+    fields: ["unflatteringColors"] as (keyof QuestionnaireFormData)[],
+  },
+  {
+    id: "makeupAdvicePreference",
+    title: "Do you want makeup advice in your analysis? 💄",
     fields: ["makeupAdvicePreference"] as (keyof QuestionnaireFormData)[],
   },
 ];
+
+// --- Custom Progress Indicator ---
+interface ProgressIndicatorProps {
+  totalSteps: number;
+  currentStep: number;
+}
+
+const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
+  totalSteps,
+  currentStep,
+}) => {
+  return (
+    <div className="flex w-full gap-2">
+      {Array.from({ length: totalSteps }).map((_, index) => (
+        <div
+          key={index}
+          className={cn(
+            "h-1 flex-1 rounded-full",
+            index === currentStep || currentStep > index
+              ? "bg-orange"
+              : "bg-orange/20"
+          )}
+        />
+      ))}
+    </div>
+  );
+};
 
 export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
   const router = useRouter();
@@ -143,42 +170,36 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
 
   const form = useForm<QuestionnaireFormData>({
     resolver: zodResolver(questionnaireSchema),
-    // Update default values to match new schema
     defaultValues: {
-      naturalHairColor: "", // Required, but selection makes it non-empty
+      naturalHairColor: "",
       skinReactionToSun: undefined,
       blushColor: undefined,
       whiteOrCreamPreference: undefined,
       veinColor: undefined,
       jewelryPreference: undefined,
-      flatteringColors: "", // Optional
-      unflatteringColors: "", // Optional
+      flatteringColors: undefined,
+      unflatteringColors: undefined,
       makeupAdvicePreference: undefined,
     },
+    mode: "onChange",
   });
 
   const { trigger, handleSubmit, watch } = form;
 
-  // Watch color preference fields for Step 4 button logic
-  const flatteringColorValue = watch("flatteringColors");
-  const unflatteringColorValue = watch("unflatteringColors");
-  const isStep4Complete = !!flatteringColorValue || !!unflatteringColorValue;
+  // Watch the field for the current step to enable/disable Next button
+  const currentFields = steps[currentStep]?.fields;
+  const firstFieldName = currentFields?.[0];
+  const currentFieldValue = firstFieldName ? watch(firstFieldName) : undefined;
+  const isCurrentStepComplete = !!currentFieldValue;
 
   const handleNext = async () => {
-    // Skip validation for Step 4 if skipping
-    if (currentStep === 3 && !isStep4Complete) {
-      setCurrentStep((prev) => prev + 1);
-      return;
-    }
-
-    const currentStepFields = steps[currentStep]?.fields as
-      | (keyof QuestionnaireFormData)[]
-      | undefined;
+    // Always validate the current step now
+    const currentStepFields = steps[currentStep]
+      ?.fields as (keyof QuestionnaireFormData)[];
     if (!currentStepFields) {
       console.error(`Invalid current step: ${currentStep}`);
       return;
     }
-
     const isValid = await trigger(currentStepFields);
 
     if (isValid) {
@@ -196,22 +217,8 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
     }
   };
 
-  // Specific handler for the skip button on Step 4
-  const handleSkipStep4 = () => {
-    if (currentStep === 3) {
-      setCurrentStep((prev) => prev + 1);
-    }
-  };
-
   const onSubmit: SubmitHandler<QuestionnaireFormData> = async (data) => {
-    const submissionData: Partial<QuestionnaireFormData> = { ...data };
-    // Remove optional fields if they are empty strings
-    if (!submissionData.flatteringColors)
-      delete submissionData.flatteringColors;
-    if (!submissionData.unflatteringColors)
-      delete submissionData.unflatteringColors;
-
-    console.log("Submitting questionnaire data:", submissionData);
+    console.log("Submitting questionnaire data:", data);
     setIsLoading(true);
     setError(null);
 
@@ -221,7 +228,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(submissionData),
+          body: JSON.stringify(data),
         }
       );
 
@@ -245,462 +252,603 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
     }
   };
 
-  const progressValue = ((currentStep + 1) / steps.length) * 100;
   const currentStepDef = steps[currentStep];
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>
-          Step {currentStep + 1} of {steps.length}:{" "}
-          {currentStepDef?.title ?? "Questionnaire"}
-        </CardTitle>
-        <Progress value={progressValue} className="mt-2" />
-      </CardHeader>
-      <CardContent>
+    <Card className="w-[750px] h-[600px] mx-auto flex justify-between flex-col overflow-hidden p-8">
+      <CardContent className="flex-grow flex flex-col items-center justify-center space-y-8">
+        <div className="w-full mb-8">
+          <ProgressIndicator
+            totalSteps={steps.length}
+            currentStep={currentStep}
+          />
+        </div>
+
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {currentStep === 0 && (
-              <FormField
-                control={form.control}
-                name="naturalHairColor"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>
-                      Your <strong>natural</strong> hair color is:
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        (Select the closest match)
-                      </span>
-                    </FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="space-y-4"
-                      >
-                        {Object.entries(groupedHairColors).map(
-                          ([category, colors]) => (
-                            <div key={category}>
-                              <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                                {category}
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {colors.map((color) => (
-                                  <FormItem
-                                    key={color.hex}
-                                    className="flex items-center space-x-0 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <RadioGroupItem
-                                        value={color.hex}
-                                        id={color.hex}
-                                        className="sr-only peer"
-                                      />
-                                    </FormControl>
-                                    <FormLabel
-                                      htmlFor={color.hex}
-                                      className={cn(
-                                        "h-10 w-10 rounded-full border-2 border-transparent cursor-pointer transition-all",
-                                        "flex items-center justify-center",
-                                        "hover:border-primary/50",
-                                        "peer-data-[state=checked]:border-primary peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary/30"
-                                      )}
-                                      style={{ backgroundColor: color.hex }}
-                                      title={color.name}
-                                      aria-label={color.name}
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="w-full flex flex-col items-center justify-center flex-grow"
+          >
+            <div className="w-full flex flex-col items-center text-center space-y-8 mb-auto">
+              <div className="flex flex-col items-center gap-3">
+                {currentStepDef?.title && (
+                  <h2 className="title">{currentStepDef.title}</h2>
+                )}
+                {currentStep === 0 && currentStepDef?.subtitle && (
+                  <p className="subtitle">{currentStepDef.subtitle}</p>
+                )}
+              </div>
+
+              <div className="w-full">
+                {currentStep === 0 && (
+                  <FormField
+                    control={form.control}
+                    name="naturalHairColor"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-4 gap-4 justify-center w-max mx-auto"
+                          >
+                            {naturalHairColors.map((color) => (
+                              <FormItem
+                                key={color.hex}
+                                className="flex items-center justify-center space-x-0 space-y-0"
+                              >
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={color.hex}
+                                    id={color.hex}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={color.hex}
+                                  className={cn(
+                                    "h-16 w-16 rounded-2xl border-2 border-neutral-300 cursor-pointer transition-all",
+                                    "flex items-center justify-center shadow-sm",
+                                    "hover:border-orange-500/50",
+                                    "peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:ring-4 peer-data-[state=checked]:ring-orange-500/30"
+                                  )}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                  aria-label={color.name}
+                                />
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 1 && (
+                  <FormField
+                    control={form.control}
+                    name="skinReactionToSun"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-xs mx-auto">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-4"
+                          >
+                            {[
+                              {
+                                value: "always_burn_rarely_tan",
+                                label: "Always burn, rarely tan",
+                                swatch:
+                                  sunReactionSwatches.always_burn_rarely_tan,
+                              },
+                              {
+                                value: "burn_then_tan",
+                                label: "Burn first, then tan",
+                                swatch: sunReactionSwatches.burn_then_tan,
+                              },
+                              {
+                                value: "tan_easily_occasionally_burn",
+                                label: "Tan easily, occasionally burn",
+                                swatch:
+                                  sunReactionSwatches.tan_easily_occasionally_burn,
+                              },
+                              {
+                                value: "always_tan_never_burn",
+                                label: "Always tan, never burn",
+                                swatch:
+                                  sunReactionSwatches.always_tan_never_burn,
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={option.value}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={option.value}
+                                  className={cn(
+                                    "flex items-center justify-between p-4 h-[5rem] rounded-lg border border-neutral-300 cursor-pointer transition-all",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-medium text-neutral-700">
+                                    {option.label}
+                                  </span>
+                                  {option.swatch && (
+                                    <div
+                                      className="h-10 w-10 rounded-full border border-neutral-300"
+                                      style={{ backgroundColor: option.swatch }}
                                     />
-                                  </FormItem>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {currentStep === 1 && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="skinReactionToSun"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        How does your skin react to sun exposure?
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {Object.entries({
-                            always_burn_rarely_tan: "Always burn, rarely tan",
-                            burn_then_tan: "Burn first, then tan",
-                            tan_easily_occasionally_burn:
-                              "Tan easily, occasionally burn",
-                            always_tan_never_burn: "Always tan, never burn",
-                          }).map(([value, label]) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal flex items-center gap-2">
-                                {sunReactionSwatches[value] && (
-                                  <div
-                                    className={swatchSize}
-                                    style={{
-                                      backgroundColor:
-                                        sunReactionSwatches[value],
-                                    }}
-                                  />
-                                )}
-                                {label}
-                              </FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="blushColor"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>When you blush, your skin turns:</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {Object.entries({
-                            rosy_pink_red: "Rosy pink or red",
-                            peachy_golden: "Peachy or golden",
-                            unsure: "Not sure / Can't tell",
-                          }).map(([value, label]) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal flex items-center gap-2">
-                                {blushSwatches[value] && (
-                                  <div
-                                    className={swatchSize}
-                                    style={{
-                                      backgroundColor: blushSwatches[value],
-                                    }}
-                                  />
-                                )}
-                                {label}
-                              </FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="whiteOrCreamPreference" // Updated name
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        Which color looks better against your skin?
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {Object.entries({
-                            pure_white: "Pure white (crisp, bright white)",
-                            off_white_cream: "Off-white (ivory, cream)",
-                            both_equal: "Both look equally good",
-                          }).map(([value, label]) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal flex items-center gap-2">
-                                {whiteCreamSwatches[value] && (
-                                  <div
-                                    className={swatchSize}
-                                    style={{
-                                      backgroundColor:
-                                        whiteCreamSwatches[value],
-                                    }}
-                                  />
-                                )}
-                                {label}
-                              </FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {currentStep === 2 && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="veinColor"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        The veins on your inner wrist appear mostly:
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {Object.entries({
-                            blue_purple: "Blue or purple",
-                            green_olive: "Green or olive",
-                            mix_both: "Mix of both colors",
-                            unsure: "Can't tell clearly",
-                          }).map(([value, label]) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal flex items-center gap-2">
-                                {veinSwatches[value] && (
-                                  <div
-                                    className={swatchSize}
-                                    style={{
-                                      backgroundColor: veinSwatches[value],
-                                    }}
-                                  />
-                                )}
-                                {label}
-                              </FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="jewelryPreference"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>
-                        Which metal best complements your skin tone?
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          {Object.entries({
-                            silver_white: "Silver/White metals",
-                            gold_yellow: "Gold/Yellow metals",
-                            rose_gold_copper: "Rose gold/Copper",
-                            unsure: "Not sure",
-                          }).map(([value, label]) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal flex items-center gap-2">
-                                {jewelrySwatches[value] && (
-                                  <div
-                                    className={swatchSize}
-                                    style={{
-                                      backgroundColor: jewelrySwatches[value],
-                                    }}
-                                  />
-                                )}
-                                {label}
-                              </FormLabel>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {currentStep === 3 && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="flatteringColors"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Which colors get you the most compliments?
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a color palette" />
-                          </SelectTrigger>
+                                  )}
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
                         </FormControl>
-                        <SelectContent>
-                          {colorPalettes.map((palette) => (
-                            <SelectItem key={palette} value={palette}>
-                              {palette}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="unflatteringColors"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Which colors make you look tired?</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a color palette" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {colorPalettes.map((palette) => (
-                            <SelectItem key={palette} value={palette}>
-                              {palette}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {currentStep === 4 && (
-              <FormField
-                control={form.control}
-                name="makeupAdvicePreference"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Do you want basic makeup advice?</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-col space-y-1"
-                      >
-                        <FormItem className="flex items-center space-x-3">
-                          <FormControl>
-                            <RadioGroupItem value="yes" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Yes</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3">
-                          <FormControl>
-                            <RadioGroupItem value="no" />
-                          </FormControl>
-                          <FormLabel className="font-normal">No</FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
-            )}
+                {currentStep === 2 && (
+                  <FormField
+                    control={form.control}
+                    name="blushColor"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-xs mx-auto">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-4"
+                          >
+                            {[
+                              {
+                                value: "rosy_pink_red",
+                                label: "Rosy pink or red",
+                                swatch: blushSwatches.rosy_pink_red,
+                              },
+                              {
+                                value: "peachy_golden",
+                                label: "Peachy golden",
+                                swatch: blushSwatches.peachy_golden,
+                              },
+                              {
+                                value: "unsure",
+                                label: "Not sure/can't tell",
+                                swatch: blushSwatches.unsure,
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={option.value}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={option.value}
+                                  className={cn(
+                                    "flex items-center justify-between p-4 h-[5rem] rounded-lg border border-neutral-300 cursor-pointer transition-all",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-medium text-neutral-700">
+                                    {option.label}
+                                  </span>
+                                  {option.swatch && (
+                                    <div
+                                      className="h-10 w-10 rounded-full border border-neutral-300"
+                                      style={{ backgroundColor: option.swatch }}
+                                    />
+                                  )}
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 3 && (
+                  <FormField
+                    control={form.control}
+                    name="whiteOrCreamPreference"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-xs mx-auto">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-4"
+                          >
+                            {[
+                              {
+                                value: "pure_white",
+                                label: "Pure white",
+                                swatch: whiteCreamSwatches.pure_white,
+                              },
+                              {
+                                value: "off_white_cream",
+                                label: "Off-white",
+                                swatch: whiteCreamSwatches.off_white_cream,
+                              },
+                              {
+                                value: "both_equal",
+                                label: "Both look equally good",
+                                swatch: whiteCreamSwatches.both_equal,
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={option.value}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={option.value}
+                                  className={cn(
+                                    "flex items-center justify-between p-4 h-[5rem] rounded-lg border border-neutral-300 cursor-pointer transition-all",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-medium text-neutral-700">
+                                    {option.label}
+                                  </span>
+                                  {option.swatch && (
+                                    <div
+                                      className={cn(
+                                        "h-10 w-10 rounded-full border border-neutral-300",
+                                        option.value === "pure_white" &&
+                                          "border-neutral-400"
+                                      )}
+                                      style={{ backgroundColor: option.swatch }}
+                                    />
+                                  )}
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 4 && (
+                  <FormField
+                    control={form.control}
+                    name="veinColor"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-xs mx-auto">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-4"
+                          >
+                            {[
+                              {
+                                value: "blue_purple",
+                                label: "Blue or purple",
+                                swatch: veinSwatches.blue_purple,
+                              },
+                              {
+                                value: "green_olive",
+                                label: "Green or olive",
+                                swatch: veinSwatches.green_olive,
+                              },
+                              {
+                                value: "mix_both",
+                                label: "Mix of both colors",
+                                swatch: veinSwatches.mix_both,
+                              },
+                              {
+                                value: "unsure",
+                                label: "Can't tell clearly",
+                                swatch: veinSwatches.unsure,
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={option.value}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={option.value}
+                                  className={cn(
+                                    "flex items-center justify-between p-4 h-[5rem] rounded-lg border border-neutral-300 cursor-pointer transition-all",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-medium text-neutral-700">
+                                    {option.label}
+                                  </span>
+                                  {option.swatch && (
+                                    <div
+                                      className="h-10 w-10 rounded-full border border-neutral-300"
+                                      style={{ backgroundColor: option.swatch }}
+                                    />
+                                  )}
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 5 && (
+                  <FormField
+                    control={form.control}
+                    name="jewelryPreference"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-xs mx-auto">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-4"
+                          >
+                            {[
+                              {
+                                value: "silver_white",
+                                label: "Silver/white",
+                                swatch: jewelrySwatches.silver_white,
+                              },
+                              {
+                                value: "gold_yellow",
+                                label: "Gold/yellow",
+                                swatch: jewelrySwatches.gold_yellow,
+                              },
+                              {
+                                value: "rose_gold_copper",
+                                label: "Rose gold/copper",
+                                swatch: jewelrySwatches.rose_gold_copper,
+                              },
+                              {
+                                value: "unsure",
+                                label: "Not sure",
+                                swatch: jewelrySwatches.unsure,
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={option.value}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={option.value}
+                                  className={cn(
+                                    "flex items-center justify-between p-4 h-[5rem] rounded-lg border border-neutral-300 cursor-pointer transition-all",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-medium text-neutral-700">
+                                    {option.label}
+                                  </span>
+                                  {option.swatch && (
+                                    <div
+                                      className="h-10 w-10 rounded-full border border-neutral-300"
+                                      style={{ backgroundColor: option.swatch }}
+                                    />
+                                  )}
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 6 && (
+                  <FormField
+                    control={form.control}
+                    name="flatteringColors"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-4 gap-6 justify-center w-max mx-auto mt-8"
+                          >
+                            {preferenceColors.map((color) => (
+                              <FormItem
+                                key={color.name}
+                                className="flex items-center justify-center space-x-0 space-y-0"
+                              >
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={color.name}
+                                    id={`flattering-${color.name}`}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={`flattering-${color.name}`}
+                                  className={cn(
+                                    "h-16 w-16 rounded-2xl border-2 border-neutral-300 cursor-pointer transition-all",
+                                    "flex items-center justify-center shadow-sm",
+                                    color.name === "White" &&
+                                      "border-neutral-400",
+                                    "hover:border-orange-500/50",
+                                    "peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:ring-4 peer-data-[state=checked]:ring-orange-500/30"
+                                  )}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                  aria-label={color.name}
+                                />
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 7 && (
+                  <FormField
+                    control={form.control}
+                    name="unflatteringColors"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-4 gap-6 justify-center w-max mx-auto mt-8"
+                          >
+                            {preferenceColors.map((color) => (
+                              <FormItem
+                                key={color.name}
+                                className="flex items-center justify-center space-x-0 space-y-0"
+                              >
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={color.name}
+                                    id={`unflattering-${color.name}`}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={`unflattering-${color.name}`}
+                                  className={cn(
+                                    "h-16 w-16 rounded-2xl border-2 border-neutral-300 cursor-pointer transition-all",
+                                    "flex items-center justify-center shadow-sm",
+                                    color.name === "White" &&
+                                      "border-neutral-400",
+                                    "hover:border-orange-500/50",
+                                    "peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:ring-4 peer-data-[state=checked]:ring-orange-500/30"
+                                  )}
+                                  style={{ backgroundColor: color.hex }}
+                                  title={color.name}
+                                  aria-label={color.name}
+                                />
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {currentStep === 8 && (
+                  <FormField
+                    control={form.control}
+                    name="makeupAdvicePreference"
+                    render={({ field }) => (
+                      <FormItem className="w-full max-w-md mx-auto mt-16">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex justify-center gap-8"
+                          >
+                            {[
+                              {
+                                value: "yes",
+                                label: "Yes please 🙏🏼",
+                              },
+                              {
+                                value: "no",
+                                label: "No, thank you 🙅🏻‍♂️",
+                              },
+                            ].map((option) => (
+                              <FormItem key={option.value}>
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option.value}
+                                    id={`makeup-${option.value}`}
+                                    className="sr-only peer"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={`makeup-${option.value}`}
+                                  className={cn(
+                                    "flex items-center justify-center text-center p-4 h-[150px] w-[150px] rounded-lg border border-neutral-300 cursor-pointer transition-all shadow-season",
+                                    "hover:border-orange",
+                                    "peer-data-[state=checked]:border-orange peer-data-[state=checked]:border-2 peer-data-[state=checked]:bg-orange/20"
+                                  )}
+                                >
+                                  <span className="text-sm font-semibold text-neutral-700 tracking-tight">
+                                    {option.label}
+                                  </span>
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
 
             {error && (
-              <p className="text-sm font-medium text-destructive">
+              <p className="text-sm font-medium text-destructive mt-4 text-center">
                 Error: {error}
               </p>
             )}
           </form>
         </Form>
       </CardContent>
+
       <CardFooter className="flex justify-between">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={handlePrevious}
           disabled={currentStep === 0 || isLoading}
+          className="font-semibold tracking-tight"
         >
-          Previous
+          <ArrowLeft className="h-4 w-4" /> Go back
         </Button>
 
-        <div className="flex items-center gap-2">
-          {" "}
-          {currentStep === 3 && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleSkipStep4}
-              disabled={isLoading}
-            >
-              Skip
-            </Button>
-          )}
-          <Button
-            type="button"
-            onClick={handleNext}
-            disabled={isLoading || (currentStep === 3 && !isStep4Complete)}
-          >
-            {isLoading
-              ? "Submitting..."
-              : currentStep === steps.length - 1
-              ? "Submit Questionnaire"
-              : "Next Step"}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="season"
+          onClick={handleNext}
+          disabled={isLoading || !isCurrentStepComplete}
+          className="font-semibold tracking-tight"
+        >
+          {isLoading
+            ? "Submitting..."
+            : currentStep === steps.length - 1
+            ? "Finish"
+            : "Next"}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
       </CardFooter>
     </Card>
   );

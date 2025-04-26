@@ -95,12 +95,5 @@ export default async function CapturePage({ params }: CapturePageProps) {
   // --- End Server-Side Check ---
 
   // If not validated, render the capture UI
-  return (
-    <div className="container mx-auto px-4 py-8 min-h-screen flex flex-col items-center">
-      <h1 className="text-2xl font-semibold mb-2 text-center">
-        Take Your Selfie
-      </h1>
-      <MobileCaptureClient sessionId={sessionId} />
-    </div>
-  );
+  return <MobileCaptureClient sessionId={sessionId} />;
 }
