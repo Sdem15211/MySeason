@@ -10,10 +10,8 @@ interface CapturePageProps {
   };
 }
 
-// Renamed to clarify it's the client part
 function MobileCaptureClient({ sessionId }: { sessionId: string }) {
   console.log("[MobileCaptureClient] Rendering with sessionId:", sessionId);
-  // Pass secondary context for the dedicated capture page
   return <MobileCameraCapture sessionId={sessionId} context="secondary" />;
 }
 
@@ -26,18 +24,16 @@ async function hasSelfieBeenValidated(sessionId: string): Promise<boolean> {
     const session = await db.query.sessions.findFirst({
       where: eq(sessions.id, sessionId),
       columns: {
-        imageBlobUrl: true, // We only need to know if the URL exists
-        status: true, // Can also check status if needed
+        imageBlobUrl: true,
+        status: true,
       },
     });
 
     if (!session) {
       console.warn(`[CapturePage] Session not found: ${sessionId}`);
-      return false; // Treat as not validated if session doesn't exist
+      return false;
     }
 
-    // A selfie is considered validated if imageBlobUrl is set
-    // (This happens in the /api/v1/analysis/validate endpoint upon success)
     const isValidated = !!session.imageBlobUrl;
     console.log(
       `[CapturePage] Session ${sessionId} validated status: ${isValidated}`
@@ -48,16 +44,15 @@ async function hasSelfieBeenValidated(sessionId: string): Promise<boolean> {
       `[CapturePage] Error checking session status for ${sessionId}:`,
       error
     );
-    return false; // Assume not validated on error
+    return false;
   }
 }
 
 export default async function CapturePage({ params }: CapturePageProps) {
   console.log("[CapturePage] Rendering with params:", params);
-  const sessionId = (await params)?.sessionId; // No need for await here
+  const sessionId = (await params)?.sessionId;
 
   if (!sessionId) {
-    // Handle missing session ID case
     return (
       <div className="container mx-auto flex h-screen flex-col items-center justify-center px-4 py-8 text-center">
         <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
@@ -105,8 +100,6 @@ export default async function CapturePage({ params }: CapturePageProps) {
       <h1 className="text-2xl font-semibold mb-2 text-center">
         Take Your Selfie
       </h1>
-      {/* Removed specific instructions here as they are now in the component */}
-      {/* Suspense can be added if MobileCameraCapture needs it */}
       <MobileCaptureClient sessionId={sessionId} />
     </div>
   );

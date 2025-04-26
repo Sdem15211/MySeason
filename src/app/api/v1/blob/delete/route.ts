@@ -41,11 +41,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Allow deletion if session exists (paid or not, as errors can happen before payment)
-    // Add stricter checks if needed (e.g., only allow if status is error, etc.)
     if (!sessionRecord) {
       console.warn(`Attempted deletion for non-existent session: ${sessionId}`);
-      // Return 404 or 403 - returning 404 might leak less info
       return NextResponse.json(
         {
           success: false,
@@ -69,7 +66,7 @@ export async function POST(request: NextRequest) {
           error: "SESSION_EXPIRED",
           message: "This analysis session has expired, cannot delete blob.",
         },
-        { status: 410 } // 410 Gone
+        { status: 410 }
       );
     }
     // ---> End Expiry Check <---\
@@ -86,7 +83,6 @@ export async function POST(request: NextRequest) {
       message: "Blob deleted successfully.",
     });
   } catch (error) {
-    // Handle potential errors from `del` or DB query
     const message =
       error instanceof Error
         ? error.message

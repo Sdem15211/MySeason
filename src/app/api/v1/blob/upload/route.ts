@@ -45,15 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           `Authorizing upload for pathname: ${pathname} (Session: ${sessionId})`
         );
 
-        // --- Session Verification (already have sessionId) ---
-        // const url = new URL(request.url); // No longer needed
-        // const sessionId = url.searchParams.get("sessionId"); // No longer needed
-
-        // if (!sessionId) { // No longer needed
-        //   throw new Error("Missing session ID for upload authorization.");
-        // }
-
-        console.log(`Verifying session ID: ${sessionId} for upload.`); // Keep logging
+        console.log(`Verifying session ID: ${sessionId} for upload.`);
 
         const sessionRecord = await db.query.sessions.findFirst({
           where: eq(sessions.id, sessionId),
@@ -63,14 +55,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           throw new Error(`Session not found: ${sessionId}`);
         }
 
-        // Check if payment is complete (adjust status string if needed)
         if (sessionRecord.status !== "payment_complete") {
           throw new Error(
             `Session ${sessionId} is not yet paid (${sessionRecord.status}). Upload denied.`
           );
         }
 
-        // Check expiry (optional but good practice)
         if (sessionRecord.expiresAt && sessionRecord.expiresAt < new Date()) {
           throw new Error(`Session ${sessionId} has expired. Upload denied.`);
         }
@@ -86,7 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           pathname: pathname,
           addRandomSuffix: false,
           tokenPayload: JSON.stringify({
-            sessionId: sessionId, // Use the already validated sessionId
+            sessionId: sessionId,
           }),
         };
       },
@@ -107,17 +97,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         } catch (error) {
           console.error("Error in onUploadCompleted:", error);
-          // Must return 200 OK to Vercel's webhook, even if internal logic fails
         }
       },
     });
 
-    // Add rate limit headers to successful response
     return NextResponse.json(jsonResponse, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error handling blob upload authorization:", message);
-    // Add rate limit headers to error response
     return NextResponse.json({ error: message }, { status: 400, headers });
   }
 }

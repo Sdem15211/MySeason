@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm";
 import { questionnaireSchema } from "@/lib/schemas/questionnaire";
 import { apiRateLimiter } from "@/lib/rate-limit";
 
-// Define the expected params structure from the dynamic route
 interface RouteParams {
   params: {
     sessionId: string;
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Validate the incoming data using the shared Zod schema
+  // Validate the incoming data using Zod schema
   const validationResult = questionnaireSchema.safeParse(requestBody);
 
   if (!validationResult.success) {
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const validatedData = validationResult.data;
 
   try {
-    // Find the session and verify its status
+    // Find the session and verify status
     const currentSession = await db
       .select({
         id: sessions.id,

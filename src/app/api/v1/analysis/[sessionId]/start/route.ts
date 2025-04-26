@@ -130,7 +130,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // --- Idempotency Check: If already processing or complete, return success ---
+    // --- If already processing or complete, return success ---
     if (
       sessionData.status === "analysis_pending" ||
       sessionData.status === "analysis_complete"
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         extractedColorData
       );
 
-      // --- 3c. LLM Analysis Preparation: compute contrast levels ---
+      // --- 3c. LLM Analysis Preparation: contrast levels ---
       const validatedQuestionnaireData =
         sessionData.questionnaireData as QuestionnaireFormData;
 
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       console.log(`   - Storing analysis result and input data in database...`);
       const newAnalysisId = generateUUID();
 
-      // Prepare the data TO BE STORED (using updated StoredInputData structure)
+      // Prepare the data TO BE STORED!! (using updated StoredInputData structure)
       const inputDataForStorage: StoredInputData = {
         extractedFeatures: {
           ...extractedColorData,
@@ -322,17 +322,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (sessionData.imageBlobUrl) {
         try {
           console.log(`   - Deleting blob: ${sessionData.imageBlobUrl}`);
-          await del(sessionData.imageBlobUrl as string); // Delete the blob from Vercel Blob storage
+          await del(sessionData.imageBlobUrl as string);
           console.log(
             `   - Successfully deleted blob: ${sessionData.imageBlobUrl}`
           );
         } catch (blobError) {
-          // Log the error but don't fail the entire request, as the main analysis succeeded.
           console.error(
             `   - Failed to delete blob ${sessionData.imageBlobUrl}:`,
             blobError
           );
-          // Optionally, you could implement a retry mechanism or add this URL to a cleanup queue.
         }
       } else {
         console.warn(
@@ -345,7 +343,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .update(sessions)
         .set({
           status: "analysis_complete",
-          analysisId: finalAnalysisId, // finalAnalysisId will be null if pipeline failed before this
+          analysisId: finalAnalysisId,
           updatedAt: new Date(),
         })
         .where(eq(sessions.id, sessionId));
@@ -355,7 +353,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         `Analysis pipeline failed for session ${sessionId}:`,
         pipelineError
       );
-      // Directly attempt to update the status to failed, assuming it should be pending
       try {
         await db
           .update(sessions)
@@ -370,13 +367,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           updateError
         );
       }
-      // Re-throw the error to be caught by the outer handler
       throw pipelineError;
     }
 
     // --- 6. Return Success Response ---
     return NextResponse.json(
-      { success: true, analysisId: finalAnalysisId }, // analysisId might be null if pipeline failed before storing
+      { success: true, analysisId: finalAnalysisId },
       { status: 200, headers: rateLimitHeaders }
     );
   } catch (error) {
@@ -384,8 +380,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       `Error in start analysis route for session ${sessionId}:`,
       error
     );
-    // Ensure session status is marked as failed if not already handled
-    // (This check might be redundant if the inner try/catch always updates on failure)
     if (
       sessionData &&
       sessionData.status !== "analysis_pending" &&

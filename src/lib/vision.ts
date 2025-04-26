@@ -4,7 +4,6 @@ import { google } from "@google-cloud/vision/build/protos/protos";
 const getCredentials = () => {
   const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
   if (!credentialsJson) {
-    // Throw an error during initialization if the variable is missing
     throw new Error(
       "GOOGLE_CREDENTIALS_JSON environment variable is not set. " +
         "Please provide the service account JSON key content in this variable (local: via .env.local, Vercel: via dashboard)."
@@ -20,23 +19,16 @@ const getCredentials = () => {
   }
 };
 
-// Instantiate the client explicitly with credentials from the environment variable
 const visionClient = new ImageAnnotatorClient({
   credentials: getCredentials(),
 });
 
-// Define likelihood thresholds (adjust as needed)
-// See: https://cloud.google.com/vision/docs/reference/rest/v1/Likelihood
 const LIKELIHOOD_THRESHOLD: protos.google.cloud.vision.v1.Likelihood[] = [
   protos.google.cloud.vision.v1.Likelihood.VERY_LIKELY,
   protos.google.cloud.vision.v1.Likelihood.LIKELY,
 ];
-// Minimum confidence for face detection
 const DETECTION_CONFIDENCE_THRESHOLD = 0.75;
 
-/**
- * Possible error codes during selfie validation.
- */
 export type ValidationErrorCode =
   | "NO_FACE_DETECTED"
   | "MULTIPLE_FACES_DETECTED"
@@ -46,9 +38,6 @@ export type ValidationErrorCode =
   | "VALIDATION_LOGIC_ERROR"
   | "VISION_API_ERROR";
 
-/**
- * Represents the result of a selfie validation attempt.
- */
 export interface ValidationResult {
   success: boolean;
   error?: ValidationErrorCode;
@@ -56,13 +45,6 @@ export interface ValidationResult {
   landmarks?: protos.google.cloud.vision.v1.FaceAnnotation.ILandmark[] | null;
 }
 
-/**
- * Detects faces in an image buffer using the Google Cloud Vision API.
- *
- * @param imageBuffer The buffer containing the image data.
- * @returns A promise that resolves with the face annotations detected in the image.
- * @throws Throws an error if the API call fails.
- */
 export async function detectFaces(
   imageBuffer: Buffer
 ): Promise<google.cloud.vision.v1.IFaceAnnotation[]> {
@@ -77,7 +59,7 @@ export async function detectFaces(
     console.log(
       `Detected ${faces?.length ?? 0} faces.`,
       JSON.stringify(faces, null, 2)
-    ); // Optional: Log detected faces for debugging
+    );
 
     if (!faces) {
       return [];
@@ -86,18 +68,10 @@ export async function detectFaces(
     return faces;
   } catch (error) {
     console.error("Google Cloud Vision API Error:", error);
-    // Consider more specific error handling based on potential API errors
     throw new Error("Failed to detect faces using Google Cloud Vision API.");
   }
 }
 
-/**
- * Validates a selfie image from a URL using Google Cloud Vision API.
- * Checks for single face presence, confidence, blurriness, and exposure.
- *
- * @param imageUrl The public URL of the image to validate.
- * @returns A promise that resolves with the ValidationResult.
- */
 export async function validateSelfieImage(
   imageUrl: string
 ): Promise<ValidationResult> {
@@ -200,7 +174,7 @@ export async function validateSelfieImage(
     console.log(`Validation successful for image URL: ${imageUrl}`);
     return {
       success: true,
-      landmarks: face.landmarks, // Return landmarks if needed later
+      landmarks: face.landmarks,
     };
   } catch (error) {
     const message =
@@ -213,6 +187,3 @@ export async function validateSelfieImage(
     };
   }
 }
-
-// Optional: Add more specific helper functions as needed, e.g., for landmark detection
-// export async function detectLandmarks(imageBuffer: Buffer): Promise<...> { ... }

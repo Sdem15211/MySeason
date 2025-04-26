@@ -56,7 +56,6 @@ export async function generateMetadata({
       .from(analyses)
       .where(eq(analyses.id, analysisId))
       .limit(1);
-    // Cast the result to ensure TS knows the shape
     const resultData = analysisResults[0]
       ?.result as Partial<AnalysisOutput> | null;
     const season = resultData?.season || "Your";
@@ -68,7 +67,6 @@ export async function generateMetadata({
   }
 }
 
-// Helper component for rendering color swatches
 const ColorSwatch = ({
   hex,
   name,
@@ -90,7 +88,6 @@ const ColorSwatch = ({
   </div>
 );
 
-// Helper component for explanation accordions
 const ExplanationAccordion = ({
   text,
   triggerText = "Show me why...",
@@ -110,7 +107,6 @@ const ExplanationAccordion = ({
   </Accordion>
 );
 
-// Interface for input data stored in DB (keep as is for now)
 interface StoredInputData {
   extractedFeatures: ExtractedColors & {
     contrast?: {

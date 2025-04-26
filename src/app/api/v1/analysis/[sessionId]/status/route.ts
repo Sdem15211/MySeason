@@ -29,8 +29,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .select({
         status: sessions.status,
         analysisId: sessions.analysisId,
-        // Add expiresAt to potentially notify client if expired during polling?
-        // expiresAt: sessions.expiresAt
       })
       .from(sessions)
       .where(eq(sessions.id, sessionId))
@@ -50,7 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // TODO: Add check for session expiry here as well?
+    // TODO: Add check for session expiry here as well
 
     const responsePayload: {
       success: boolean;

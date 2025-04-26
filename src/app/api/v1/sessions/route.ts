@@ -33,12 +33,6 @@ const stripe = new Stripe(stripeSecretKey!, {
   typescript: true,
 });
 
-/**
- * POST handler to create a new analysis session AND a Stripe Checkout Session.
- * Generates a unique session ID, stores it in the database with pending status,
- * creates a corresponding Stripe Checkout session, and returns the internal
- * session ID and the Stripe checkout URL to the client.
- */
 const createSessionAndCheckoutLogic = async () => {
   if (!stripePriceId || !appUrl) {
     throw new Error(

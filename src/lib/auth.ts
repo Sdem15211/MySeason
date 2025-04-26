@@ -28,7 +28,7 @@ export const config = {
         try {
           const updateResult = await db
             .update(analyses)
-            .set({ userId: newUser.user.id, updatedAt: new Date() }) // Also update timestamp
+            .set({ userId: newUser.user.id, updatedAt: new Date() })
             .where(eq(analyses.userId, anonymousUser.user.id))
             .returning({ updatedId: analyses.id });
 

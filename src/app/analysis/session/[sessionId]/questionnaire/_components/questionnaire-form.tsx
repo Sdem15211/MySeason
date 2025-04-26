@@ -260,7 +260,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Step 1: Natural Hair Color */}
             {currentStep === 0 && (
               <FormField
                 control={form.control}
@@ -324,10 +323,8 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
               />
             )}
 
-            {/* Step 2: Skin Reaction, Blush Color, White/Cream Preference */}
             {currentStep === 1 && (
               <>
-                {/* Skin Reaction to Sun */}
                 <FormField
                   control={form.control}
                   name="skinReactionToSun"
@@ -377,7 +374,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                   )}
                 />
 
-                {/* Blush Color */}
                 <FormField
                   control={form.control}
                   name="blushColor"
@@ -422,7 +418,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                   )}
                 />
 
-                {/* White vs Cream Preference */}
                 <FormField
                   control={form.control}
                   name="whiteOrCreamPreference" // Updated name
@@ -472,10 +467,8 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
               </>
             )}
 
-            {/* Step 3: Vein Color, Jewelry Preference */}
             {currentStep === 2 && (
               <>
-                {/* Vein Color */}
                 <FormField
                   control={form.control}
                   name="veinColor"
@@ -523,7 +516,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                   )}
                 />
 
-                {/* Jewelry Preference */}
                 <FormField
                   control={form.control}
                   name="jewelryPreference"
@@ -573,10 +565,8 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
               </>
             )}
 
-            {/* Step 4: Color Preferences */}
             {currentStep === 3 && (
               <>
-                {/* Flattering Colors */}
                 <FormField
                   control={form.control}
                   name="flatteringColors"
@@ -587,7 +577,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        value={field.value || ""} // Handle optional empty string
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -595,7 +585,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {/* Using placeholder colorPalettes */}
                           {colorPalettes.map((palette) => (
                             <SelectItem key={palette} value={palette}>
                               {palette}
@@ -607,7 +596,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                     </FormItem>
                   )}
                 />
-                {/* Unflattering Colors */}
                 <FormField
                   control={form.control}
                   name="unflatteringColors"
@@ -616,7 +604,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                       <FormLabel>Which colors make you look tired?</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        value={field.value || ""} // Handle optional empty string
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -624,7 +612,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {/* Using placeholder colorPalettes */}
                           {colorPalettes.map((palette) => (
                             <SelectItem key={palette} value={palette}>
                               {palette}
@@ -639,7 +626,6 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
               </>
             )}
 
-            {/* Step 5: Preferences */}
             {currentStep === 4 && (
               <FormField
                 control={form.control}
@@ -693,12 +679,10 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
 
         <div className="flex items-center gap-2">
           {" "}
-          {/* Container for right buttons */}
-          {/* Show Skip button only on Step 4 */}
           {currentStep === 3 && (
             <Button
               type="button"
-              variant="ghost" // Use ghost variant for less emphasis
+              variant="ghost"
               onClick={handleSkipStep4}
               disabled={isLoading}
             >
@@ -708,9 +692,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
           <Button
             type="button"
             onClick={handleNext}
-            disabled={
-              isLoading || (currentStep === 3 && !isStep4Complete) // Disable Next on Step 4 if nothing selected
-            }
+            disabled={isLoading || (currentStep === 3 && !isStep4Complete)}
           >
             {isLoading
               ? "Submitting..."

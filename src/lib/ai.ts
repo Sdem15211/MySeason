@@ -309,13 +309,6 @@ Your output must be valid JSON matching the AnalysisOutputSchema exactly. Focus 
 
 // --- End Prompt Content ---
 
-/**
- * Generates a personal color analysis using the AI SDK with Anthropic.
- *
- * @param input The structured input data adhering to LLMInput schema.
- * @returns A promise that resolves with the validated, structured analysis result (AnalysisOutput).
- * @throws Throws an error if the AI SDK call fails or the result doesn't match the schema.
- */
 export async function generateAnalysis(
   input: LLMInput
 ): Promise<AnalysisOutput> {
@@ -337,7 +330,6 @@ export async function generateAnalysis(
     return object;
   } catch (error) {
     console.error("Vercel AI SDK Error (Anthropic):", error);
-    // Consider more specific error handling based on potential error types from AI SDK
     throw new Error(
       "Failed to generate analysis using Vercel AI SDK with Anthropic."
     );

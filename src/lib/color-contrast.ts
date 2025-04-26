@@ -39,9 +39,6 @@ export function relativeLuminance(rgb: RgbColor): number {
   return 0.2126 * R + 0.7152 * G + 0.0722 * B;
 }
 
-/**
- * Compute contrast ratio between two hex color strings, rounded to 2 decimals.
- */
 export function contrastRatioHex(hex1: string, hex2: string): number {
   const c1 = hexToRgb(hex1);
   const c2 = hexToRgb(hex2);
@@ -50,9 +47,6 @@ export function contrastRatioHex(hex1: string, hex2: string): number {
   return Number(((L1 + 0.05) / (L2 + 0.05)).toFixed(2));
 }
 
-/**
- * Categorize a numeric contrast ratio into 'High', 'Medium', or 'Low'.
- */
 export function categorizeContrast(ratio: number): "High" | "Medium" | "Low" {
   if (ratio >= 7) return "High";
   if (ratio >= 4.5) return "Medium";

@@ -23,7 +23,7 @@ export function CopyButton({
       await navigator.clipboard.writeText(textToCopy);
       setHasCopied(true);
       toast.success("Copied to clipboard!");
-      setTimeout(() => setHasCopied(false), 2000); // Reset icon after 2 seconds
+      setTimeout(() => setHasCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy text: ", err);
       toast.error("Failed to copy to clipboard.");
@@ -32,9 +32,9 @@ export function CopyButton({
 
   return (
     <Button
-      variant="ghost" // Use ghost variant for less visual clutter inline
+      variant="ghost"
       size="icon"
-      className={cn("h-6 w-6 ml-1", className)} // Adjust size and margin
+      className={cn("h-6 w-6 ml-1", className)}
       onClick={handleCopy}
       aria-label="Copy to clipboard"
       {...props}
