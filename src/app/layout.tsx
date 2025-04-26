@@ -21,7 +21,10 @@ export default function RootLayout({
       <body
         className={`${inter.className} antialiased flex flex-col min-h-screen`}
       >
-        <Navbar />
+        <div className="fixed inset-0 -z-10 bg-gradient-to-t from-[rgb(244,130,87,0.2)] to-[rgb(255,255,255,0)]" />
+        <header>
+          <Navbar />
+        </header>
         <main className="flex-grow">{children}</main>
         <Toaster />
       </body>

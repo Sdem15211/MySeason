@@ -27,7 +27,9 @@ export function SignIn() {
   return (
     <Card className="max-w-md w-full">
       <CardHeader>
-        <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
+        <CardTitle className="text-lg md:text-xl tracking-tighter">
+          Sign In
+        </CardTitle>
         <CardDescription className="text-xs md:text-sm">
           Enter your email below to login to your account
         </CardDescription>
@@ -67,6 +69,7 @@ export function SignIn() {
           </div>
 
           <Button
+            variant="season"
             type="submit"
             className="w-full"
             disabled={loading}

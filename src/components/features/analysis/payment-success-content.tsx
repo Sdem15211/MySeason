@@ -35,10 +35,15 @@ export function PaymentSuccessContent({
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8 text-center">
-      <h1 className="text-3xl font-bold text-green-600 mb-4">
-        Payment Successful!
-      </h1>
+    <div className="container h-screen flex flex-col gap-12 items-center justify-center mx-auto">
+      <div className="flex flex-col gap-2 items-center justify-center">
+        <h1 className="title">Time to take your selfie! 📸</h1>
+        <p className="subtitle">
+          Use your phone’s camera for the best quality.
+          <br />
+          Scan the QR code below to continue on your mobile device
+        </p>
+      </div>
       <div className="flex justify-center">
         <SelfieAnalyzer sessionId={internalSessionId} />
       </div>
