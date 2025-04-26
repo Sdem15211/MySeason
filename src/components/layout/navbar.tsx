@@ -1,18 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "lucide-react";
 import { LogoutButton } from "../auth/logout-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { Logo } from "../ui/logo";
 
 function getInitials(name?: string | null): string {
   if (!name) return "?";
@@ -29,10 +22,11 @@ export async function Navbar() {
   const isLoggedIn = session?.user && !session.user.isAnonymous;
 
   return (
-    <nav className="bg-background border-b fixed top-0 z-50 w-full">
+    <nav className="fixed top-0 z-50 w-full">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg">
-          MySeason
+        <Link href="/" className="font-bold flex items-center">
+          <Logo />
+          <span className="tracking-tighter">MySeason</span>
         </Link>
 
         <div className="flex items-center gap-4">
@@ -56,10 +50,10 @@ export async function Navbar() {
             </div>
           ) : (
             <>
-              <Button variant="ghost" asChild>
+              <Button variant="secondary" asChild>
                 <Link href="/auth/signin">Log In</Link>
               </Button>
-              <Button asChild>
+              <Button variant="outline" asChild>
                 <Link href="/auth/signup">Sign Up</Link>
               </Button>
             </>

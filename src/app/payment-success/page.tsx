@@ -9,10 +9,7 @@ if (!stripeSecretKey) {
   console.error(
     "FATAL: STRIPE_SECRET_KEY environment variable is not set for payment success page."
   );
-  // In a real app, you might throw an error or have a dedicated error page
-  // For now, we'll let it proceed but log the error prominently.
 }
-// Add a check to prevent creating Stripe client if key is missing
 const stripe = stripeSecretKey
   ? new Stripe(stripeSecretKey, { typescript: true })
   : null;
@@ -80,7 +77,6 @@ export default async function PaymentSuccessPage({
       console.log(
         `Payment verified for Stripe session ${stripeCheckoutId}, Internal session: ${internalSessionId}`
       );
-      // Render the client component with the internal ID
       return (
         <PaymentSuccessContent
           internalSessionId={internalSessionId}

@@ -352,19 +352,14 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
         </div>
       )}
 
-      {status === "desktop_qr" && isLikelyDesktop && !isDevelopment && (
-        <div className="text-center space-y-4 p-6 border rounded-lg shadow-sm bg-card max-w-md">
-          <h3 className="text-lg font-medium">Scan with your Phone</h3>
-          <p className="text-sm text-muted-foreground">
-            Use your phone&apos;s camera for the best quality selfie. Scan the
-            QR code below to continue on your mobile device.
-          </p>
-          <div className="bg-white p-4 inline-block rounded-md shadow">
-            <QRCode value={getQrCodeUrl()} size={192} level="M" />
+      {isLikelyDesktop && !isDevelopment && status == "desktop_qr" && (
+        <div>
+          <div className="bg-gradient-to-t from-[#DF6435] to-[#F48257] p-14 inline-block rounded-[1.5rem] shadow-season">
+            <QRCode value={getQrCodeUrl()} size={200} level="M" />
           </div>
           <div className="flex items-center justify-center space-x-2 pt-4 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Waiting for image from phone...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-orange" />
+            <span className="subtitle">Waiting for image from phone...</span>
           </div>
         </div>
       )}
@@ -409,7 +404,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
 
       {status === "redirecting" && (
         <div className="flex items-center space-x-2 text-muted-foreground p-8">
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin text-orange" />
           <span>Processing...</span>
         </div>
       )}

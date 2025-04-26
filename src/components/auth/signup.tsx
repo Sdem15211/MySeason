@@ -27,7 +27,9 @@ export function SignUp() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Sign Up</CardTitle>
+        <CardTitle className="text-lg md:text-xl tracking-tighter">
+          Sign Up
+        </CardTitle>
         <CardDescription>
           <p className="text-sm text-muted-foreground">
             Create an account below so you can save your analysis
@@ -84,6 +86,7 @@ export function SignUp() {
               </div>
             </div>
             <Button
+              variant="season"
               type="submit"
               disabled={loading}
               className="w-full mt-4"
@@ -118,22 +121,20 @@ export function SignUp() {
               )}
             </Button>
           </div>
-          <div className="flex flex-col gap-2 items-center justify-center border-t pt-4">
-            <p className="text-sm text-muted-foreground">Or</p>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={async () => {
-                await signIn.social({
-                  provider: "google",
-                  callbackURL: "/profile",
-                });
-              }}
-            >
-              <Icons.google />
-              Sign up with Google
-            </Button>
-          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              await signIn.social({
+                provider: "google",
+                callbackURL: "/profile",
+              });
+            }}
+          >
+            <Icons.google />
+            Sign up with Google
+          </Button>
         </div>
       </CardContent>
     </Card>
