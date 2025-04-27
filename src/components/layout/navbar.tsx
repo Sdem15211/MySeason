@@ -22,7 +22,7 @@ export async function Navbar() {
   const isLoggedIn = session?.user && !session.user.isAnonymous;
 
   return (
-    <nav className="fixed top-0 z-50 w-full">
+    <nav className="fixed top-0 z-50 w-full filter backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="font-bold flex items-center">
           <Logo />

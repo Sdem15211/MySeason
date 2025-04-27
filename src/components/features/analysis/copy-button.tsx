@@ -40,9 +40,9 @@ export function CopyButton({
       {...props}
     >
       {hasCopied ? (
-        <Check className="h-4 w-4 text-green-600" />
+        <Check className="h-6 w-6 text-green-600" />
       ) : (
-        <Copy className="h-4 w-4" />
+        <Copy className="h-6 w-6" />
       )}
     </Button>
   );

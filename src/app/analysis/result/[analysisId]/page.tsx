@@ -25,7 +25,15 @@ import { CopyButton } from "@/components/features/analysis/copy-button";
 import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
-import { AlertCircle, Info, Palette, Shirt, Paintbrush } from "lucide-react";
+import {
+  AlertCircle,
+  Info,
+  Palette,
+  Shirt,
+  Paintbrush,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 
 interface AnalysisResultsPageProps {
   params: {
@@ -113,11 +121,7 @@ const CollapsibleInfoCard = ({
   </Card>
 );
 
-interface OverallVibeCardProps {
-  vibe: string;
-}
-
-const OverallVibeCard = ({ vibe }: OverallVibeCardProps) => (
+const OverallVibeCard = ({ vibe }: { vibe: string }) => (
   <Card className="border-black/25 p-0">
     <CardContent className="p-5 space-y-2">
       <p className="text-xs text-brown/60 font-medium">Overall vibe</p>
@@ -127,10 +131,6 @@ const OverallVibeCard = ({ vibe }: OverallVibeCardProps) => (
     </CardContent>
   </Card>
 );
-
-interface SaveAnalysisPromptProps {
-  analysisId: string;
-}
 
 const SaveAnalysisPrompt = () => (
   <Card className="bg-gradient-to-t from-[#ED6F3F] to-[#F48257] shadow-season lg:w-[14rem] w-full flex flex-col gap-4">
@@ -158,6 +158,48 @@ const SaveAnalysisPrompt = () => (
       >
         <Link href="/auth/signup">Sign Up</Link>
       </Button>
+    </CardContent>
+  </Card>
+);
+
+interface ColorInfo {
+  name: string;
+  hex: string;
+}
+
+const ColorItem = ({ name, hex }: ColorInfo) => (
+  <div className="flex items-center justify-between border-b border-black/10 pb-6 last:border-b-0 last:pb-0">
+    <div className="flex items-start gap-8">
+      <div
+        className="w-20 h-20 rounded-xl border border-black/10 shadow"
+        style={{ backgroundColor: hex }}
+        title={`${name} (${hex})`}
+      />
+      <div className="flex flex-col gap-1 pt-2">
+        <p className="title text-brown">{name}</p>
+        <p className="text-xs text-muted-foreground">{hex}</p>
+      </div>
+    </div>
+    <CopyButton textToCopy={hex} />
+  </div>
+);
+
+interface ColorListCardProps {
+  title: string;
+  colors: ColorInfo[];
+}
+
+const ColorListCard = ({ title, colors }: ColorListCardProps) => (
+  <Card className="overflow-hidden w-full p-6">
+    <CardHeader className="p-0 justify-start mb-12">
+      <CardTitle className="text-lg font-semibold text-brown tracking-tighter">
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-0 flex flex-col gap-6">
+      {colors.map((color) => (
+        <ColorItem key={color.hex} name={color.name} hex={color.hex} />
+      ))}
     </CardContent>
   </Card>
 );
@@ -276,7 +318,7 @@ export default async function AnalysisResultsPage({
       <Tabs
         defaultValue="general"
         orientation="vertical"
-        className="flex flex-col lg:flex-row w-full justify-between items-center lg:items-start"
+        className="flex flex-col gap-12 lg:gap-0 lg:flex-row w-full justify-between items-center lg:items-start lg:px-6"
       >
         <TabsList className="flex lg:flex-col items-start justify-start bg-transparent gap-3 lg:w-[14rem] mb-8">
           <TabsTrigger
@@ -313,7 +355,7 @@ export default async function AnalysisResultsPage({
           )}
         </TabsList>
 
-        <div className="max-w-[31.25rem] pb-12">
+        <div className="max-w-[31.25rem] w-full">
           <TabsContent value="general" className="flex flex-col gap-10">
             <div className="flex flex-col gap-3 items-start">
               <h2 className="title text-brown">Why this season?</h2>
@@ -336,11 +378,15 @@ export default async function AnalysisResultsPage({
             </div>
           </TabsContent>
 
-          <TabsContent value="colors" className="mt-0">
-            <Card>
-              <CardHeader>Colors Content Placeholder</CardHeader>
-              <CardContent>Details about colors go here.</CardContent>
-            </Card>
+          <TabsContent value="colors" className="flex flex-col gap-8 w-full">
+            <ColorListCard
+              title="Power colors ✨"
+              colors={result.personalPalette?.powerColors ?? []}
+            />
+            <ColorListCard
+              title="Colors to avoid 🚫"
+              colors={result.colorsToAvoid?.map((item) => item.color) ?? []}
+            />
           </TabsContent>
           <TabsContent value="style" className="mt-0">
             <Card>
