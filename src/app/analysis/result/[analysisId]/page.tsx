@@ -25,7 +25,16 @@ import { CopyButton } from "@/components/features/analysis/copy-button";
 import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
-import { AlertCircle, Briefcase, Gem, Info, Shirt } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUp01,
+  Briefcase,
+  Gem,
+  Info,
+  Shirt,
+} from "lucide-react";
 
 interface AnalysisResultsPageProps {
   params: {
@@ -203,6 +212,23 @@ const StyleCard = ({ description, scenario, colors, icon }: StyleCardProps) => (
   </Card>
 );
 
+interface HairCardProps {
+  description: string;
+  title: string;
+  icon: React.ReactNode;
+}
+const HairCard = ({ description, title, icon }: HairCardProps) => (
+  <Card className="border-black/25 p-0">
+    <CardContent className="p-5 space-y-2 relative">
+      {icon}
+      <p className="text-xs text-brown/60 font-medium">{title}</p>
+      <p className="text-foreground text-sm tracking-tight leading-normal max-w-[90%]">
+        {description}
+      </p>
+    </CardContent>
+  </Card>
+);
+
 const metalGradients = {
   Gold: "linear-gradient(to top, #EDC700, #FFDD2A)",
   Silver: "linear-gradient(to top, #A8A8A8, #CCCCCC)",
@@ -325,7 +351,7 @@ export default async function AnalysisResultsPage({
         orientation="vertical"
         className="flex flex-col gap-12 lg:gap-0 lg:flex-row w-full justify-between items-center lg:items-start lg:px-6"
       >
-        <TabsList className="flex lg:flex-col items-start justify-start bg-transparent gap-3 lg:w-[14rem] mb-8">
+        <TabsList className="flex lg:flex-col items-start justify-start bg-transparent gap-3 lg:w-[14rem] mb-8 lg:sticky lg:top-58">
           <TabsTrigger
             value="general"
             className="px-4 py-5 data-[state=active]:bg-orange/15 bg-[#EEEEEE] data-[state=active]:text-orange text-sm"
@@ -464,12 +490,33 @@ export default async function AnalysisResultsPage({
             </div>
           </TabsContent>
 
-          <TabsContent value="hair" className="mt-0">
-            <Card>
-              <CardHeader>Hair Content Placeholder</CardHeader>
-              <CardContent>Details about hair go here.</CardContent>
-            </Card>
+          <TabsContent value="hair" className="flex flex-col gap-8">
+            <p className="text-lg font-semibold text-brown tracking-tighter">
+              Hair color advice 💇🏻‍♂ ️💇🏼‍♀️
+            </p>
+            <HairCard
+              description={result.hairColorGuidance.lighterToneEffect}
+              title="Going lighter"
+              icon={
+                <ArrowUp className="size-5 text-orange absolute top-5 right-5" />
+              }
+            />
+            <HairCard
+              description={result.hairColorGuidance.darkerToneEffect}
+              title="Going darker"
+              icon={
+                <ArrowDown className="size-5 text-orange absolute top-5 right-5" />
+              }
+            />
+            <HairCard
+              description={result.hairColorGuidance.colorToAvoid}
+              title="Color to avoid"
+              icon={
+                <AlertCircle className="size-5 text-orange absolute top-5 right-5" />
+              }
+            />
           </TabsContent>
+
           {result.makeupRecommendations && (
             <TabsContent value="makeup" className="mt-0">
               <Card>
@@ -480,7 +527,7 @@ export default async function AnalysisResultsPage({
           )}
         </div>
 
-        <div className="w-full md:w-60 space-y-4">
+        <div className="w-full md:w-60 space-y-4 lg:sticky lg:top-58">
           {showSavePrompt && <SaveAnalysisPrompt />}
         </div>
       </Tabs>
