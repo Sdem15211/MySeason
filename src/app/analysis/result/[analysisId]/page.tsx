@@ -25,15 +25,7 @@ import { CopyButton } from "@/components/features/analysis/copy-button";
 import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { ExtractedColors } from "@/lib/types/image-analysis.types";
 import { QuestionnaireFormData } from "@/lib/schemas/questionnaire";
-import {
-  AlertCircle,
-  Info,
-  Palette,
-  Shirt,
-  Paintbrush,
-  Sparkles,
-  XCircle,
-} from "lucide-react";
+import { AlertCircle, Briefcase, Gem, Info, Shirt } from "lucide-react";
 
 interface AnalysisResultsPageProps {
   params: {
@@ -62,27 +54,6 @@ export async function generateMetadata({
     return { title: `Analysis Results - ${analysisId}` };
   }
 }
-
-const ColorSwatch = ({
-  hex,
-  name,
-  className,
-}: {
-  hex: string;
-  name?: string;
-  className?: string;
-}) => (
-  <div
-    className={`inline-flex items-center mr-3 mb-2 p-1 pr-3 rounded-full border bg-secondary/30 ${className}`}
-  >
-    <div
-      className="w-6 h-6 rounded-full border border-muted mr-2 shadow-inner"
-      style={{ backgroundColor: hex }}
-      title={`${name || "Color"} (${hex})`}
-    />
-    {name && <span className="text-xs font-medium">{name}</span>}
-  </div>
-);
 
 interface InfoCardProps {
   title: string;
@@ -204,6 +175,40 @@ const ColorListCard = ({ title, colors }: ColorListCardProps) => (
   </Card>
 );
 
+interface StyleCardProps {
+  description: string;
+  scenario: string;
+  colors: string[];
+  icon: React.ReactNode;
+}
+
+const StyleCard = ({ description, scenario, colors, icon }: StyleCardProps) => (
+  <Card className="border-black/25 p-0">
+    <CardContent className="p-5 space-y-2 relative">
+      {icon}
+      <p className="text-xs text-brown/60 font-medium">{scenario}</p>
+      <p className="text-foreground text-sm tracking-tight leading-normal max-w-[90%]">
+        {description}
+      </p>
+      <div className="flex items-center gap-2 mt-6">
+        {colors.map((color) => (
+          <div
+            key={color}
+            className="size-8 rounded-md border border-black/10 shadow"
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const metalGradients = {
+  Gold: "linear-gradient(to top, #EDC700, #FFDD2A)",
+  Silver: "linear-gradient(to top, #A8A8A8, #CCCCCC)",
+  Bronze: "linear-gradient(to top, #EB9B82, #D4836A)",
+};
+
 interface StoredInputData {
   extractedFeatures: ExtractedColors & {
     contrast?: {
@@ -299,7 +304,7 @@ export default async function AnalysisResultsPage({
   const questionnaireData = inputData.questionnaireData ?? {};
 
   return (
-    <div className="container mx-auto pt-24 pb-8 max-w-7xl px-4 lg:px-0">
+    <div className="container mx-auto pt-24 pb-24 max-w-7xl px-4 lg:px-0">
       <div className="flex flex-col w-full items-center mb-8 lg:mb-12">
         <p className="subtitle">Your season is:</p>
         <h1 className="text-[2.5rem] font-bold mb-3 tracking-tighter text-brown">
@@ -388,12 +393,77 @@ export default async function AnalysisResultsPage({
               colors={result.colorsToAvoid?.map((item) => item.color) ?? []}
             />
           </TabsContent>
-          <TabsContent value="style" className="mt-0">
-            <Card>
-              <CardHeader>Style Content Placeholder</CardHeader>
-              <CardContent>Details about style go here.</CardContent>
-            </Card>
+
+          <TabsContent value="style" className="flex flex-col gap-16">
+            <div className="flex flex-col gap-8">
+              <p className="text-lg font-semibold text-brown tracking-tighter">
+                Styling advice 😎
+              </p>
+              <div className="flex flex-col gap-8">
+                <StyleCard
+                  description={
+                    result.styleScenarios.professional.colorCombinationAdvice
+                  }
+                  scenario="Professional"
+                  colors={["#2C3C55", "#C19A6B"]}
+                  icon={
+                    <Briefcase className="size-5 text-orange absolute top-5 right-5" />
+                  }
+                />
+                <StyleCard
+                  description={
+                    result.styleScenarios.elegant.colorCombinationAdvice
+                  }
+                  scenario="Elegant"
+                  colors={[]}
+                  icon={
+                    <Gem className="size-5 text-orange absolute top-5 right-5" />
+                  }
+                />
+                <StyleCard
+                  description={
+                    result.styleScenarios.casual.colorCombinationAdvice
+                  }
+                  scenario="Casual"
+                  colors={[]}
+                  icon={
+                    <Shirt className="size-5 text-orange absolute top-5 right-5" />
+                  }
+                />
+              </div>
+            </div>
+            <div className="w-full h-px bg-black/10" />
+            <div className="flex flex-col gap-8">
+              <p className="text-lg font-semibold text-brown tracking-tighter">
+                Metal Recommendations 💎
+              </p>
+              <Card className="border-black/25 p-0">
+                <CardContent className="p-5 space-y-2 flex gap-8 items-center">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-brown/60 font-medium">
+                      Best matching metal color
+                    </p>
+                    <p className="text-xl font-semibold text-brown tracking-tighter mb-2">
+                      {result.primaryMetal}
+                    </p>
+                    <p className="text-foreground text-sm tracking-tight leading-normal">
+                      {result.metalTonesExplanation}
+                    </p>
+                  </div>
+                  <div
+                    className="size-20 rounded-xl border border-black/10 shadow shrink-0"
+                    style={{
+                      background:
+                        metalGradients[
+                          result.primaryMetal as keyof typeof metalGradients
+                        ] || "#EEEEEE", // Fallback color
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
+
           <TabsContent value="hair" className="mt-0">
             <Card>
               <CardHeader>Hair Content Placeholder</CardHeader>
@@ -414,14 +484,6 @@ export default async function AnalysisResultsPage({
           {showSavePrompt && <SaveAnalysisPrompt />}
         </div>
       </Tabs>
-      {/* <p className="mt-10 text-xs text-center text-muted-foreground">
-        Analysis generated on:{" "}
-        {analysisRecord.createdAt.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
-      </p> */}
     </div>
   );
 }

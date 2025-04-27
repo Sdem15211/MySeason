@@ -38,7 +38,7 @@ export const AnalysisOutputSchema = z.object({
   contrastLevelExplanation: z.string(),
   personalPalette: PersonalPaletteSchema,
   colorsToAvoid: z.array(ColorToAvoidSchema).length(3),
-  primaryMetal: z.string(),
+  primaryMetal: z.enum(["Gold", "Silver", "Bronze"]),
   metalTonesExplanation: z.string(),
   hairColorGuidance: z.object({
     lighterToneEffect: z
