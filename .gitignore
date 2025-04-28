@@ -43,5 +43,5 @@ next-env.d.ts
 # google credentials
 google-credentials/
 
-# cursorrules
-.cursorrules
+# cursor
+/.cursor
