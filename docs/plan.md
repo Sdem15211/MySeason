@@ -166,7 +166,6 @@ The AI Personal Color Analysis App (MySeason) provides users with an accurate an
 - [x] Poll backend analysis completion and retrieve the unique analysis ID.
 - [x] Navigate user to the results page (`/analysis/result/[analysisId]`) upon completion.
 - [x] Connect results page data fetching to the backend retrieval endpoint.
-- [ ] Connect "View Previous Analysis" input to the backend retrieval endpoint.
 - [x] Test the end-to-end QR code flow synchronization between desktop and mobile contexts.
 
 ## 7. Testing

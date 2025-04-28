@@ -1,6 +1,6 @@
 # MySeason - AI Personal Color Analysis App
 
-MySeason is a web & mobile application that provides users with an accurate and personalized color and seasonal analysis. It uses a combination of a user-uploaded selfie, a short questionnaire, Computer Vision (Google Cloud Vision API), image processing (`sharp`), and a Large Language Model (Claude 3.5 Sonnet via Vercel AI SDK) to generate results.
+MySeason is a web (& mobile) application that provides users with an accurate and personalized color and seasonal analysis. It uses a combination of a user-uploaded selfie, a short questionnaire, Computer Vision (Google Cloud Vision API), image processing (`sharp`), and a Large Language Model (Claude 3.5 Sonnet via Vercel AI SDK) to generate results.
 
 Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle ORM, and Supabase. Users can get an analysis anonymously and optionally create an account using Better Auth to save their results.
 
@@ -13,12 +13,31 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
 - [x] Core Feature Backend (Payment, Selfie Upload & Validation, Questionnaire, Analysis Pipeline, Result Storage/Retrieval)
 - [x] Frontend Foundation
 - [x] Core Feature Frontend
-- [x] Basic Integration & Manual Testing
+- [x] Manual Testing
 
 ### Pending ⏳
 
-- [ ] **New design implementation!!**
+- [ ] **New UI designs implementation!!**
+
+  - [ ] Homepage
+  - [x] QR code scan screen
+  - [ ] Mobile selfie capturing screen!!
+  - [x] Questionnaire
+  - [x] Processing page
+  - [ ] Analysis result page
+    - [x] General tab
+    - [x] Color tab
+    - [x] Style tab
+    - [x] Hair tab
+    - [ ] Makeup tab
+  - [ ] Signup/Login screen
+  - [ ] Profile page
+
+- [ ] **Optimize LLM prompt**
 - [ ] **Feature: "Personal Card" Generation & Download**
 - [ ] **Backend improvements**
-  - [ ] Temporary Data Cleanup Strategy
+  - [ ] data cleanup
+  - [ ] general backend improvements (error handling, clean up messy code)
+- [ ] **Frontend improvements**
+  - [ ] design & build homepage
 - [ ] **Mobile app (React Native & Expo)**
