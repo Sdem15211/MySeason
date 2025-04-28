@@ -31,7 +31,7 @@ export async function Navbar() {
 
         <div className="flex items-center gap-4">
           {isLoggedIn ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Link
                 href="/profile"
                 className="relative h-8 w-8 rounded-full cursor-pointer"

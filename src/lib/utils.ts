@@ -9,3 +9,11 @@ export function cn(...inputs: ClassValue[]) {
 export function generateUUID(): string {
   return randomUUID();
 }
+
+export function formatDate(date: Date): string {
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}

@@ -11,8 +11,7 @@ export function LogoutButton() {
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
       onClick={async () => {
         await signOut({
           fetchOptions: {
@@ -27,8 +26,7 @@ export function LogoutButton() {
         });
       }}
     >
-      <LogOut className="mr-2 h-4 w-4" />
-      Log Out
+      <LogOut className="size-5" />
     </Button>
   );
 }
