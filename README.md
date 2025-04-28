@@ -24,13 +24,13 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
   - [ ] Mobile selfie capturing screen!!
   - [x] Questionnaire
   - [x] Processing page
-  - [ ] Analysis result page
+  - [x] Analysis result page
     - [x] General tab
     - [x] Color tab
     - [x] Style tab
     - [x] Hair tab
-    - [ ] Makeup tab
-  - [ ] Signup/Login screen
+    - [x] Makeup tab
+  - [x] Signup/Login screen
   - [ ] Profile page
 
 - [ ] **Optimize LLM prompt**

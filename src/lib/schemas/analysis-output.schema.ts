@@ -5,41 +5,43 @@ const ColorInfoSchema = z.object({
   hex: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color format"),
 });
 
-const PersonalPaletteSchema = z.object({
-  powerColors: z.array(ColorInfoSchema).length(5),
-  additionalCompatibleColors: z.array(ColorInfoSchema).length(3),
-});
-
-const ColorToAvoidSchema = z.object({
+const MakeupCardSchema = z.object({
+  description: z.string(),
   color: ColorInfoSchema,
-  explanation: z.string().max(150),
 });
 
 const MakeupRecommendationsSchema = z.object({
-  foundationUndertoneGuidance: z.string(),
-  blushRecommendation: z.string(),
-  complementaryLipColors: z.array(z.string()).min(2).max(3),
-  complementaryEyeColors: z.array(z.string()).min(2).max(3),
-  makeupExplanation: z.string(),
+  generalMakeupAdvice: z.string().describe("General advice for makeup choices"),
+  foundationUndertoneGuidance: MakeupCardSchema,
+  blushRecommendation: MakeupCardSchema,
+  complementaryLipColors: z.array(ColorInfoSchema).min(2).max(3),
+  complementaryEyeColors: z.array(ColorInfoSchema).min(2).max(3),
 });
 
 const StyleScenarioSchema = z.object({
   colorCombinationAdvice: z.string(),
-  patternGuidance: z.string().optional(),
+  colorCombinationColors: z.array(ColorInfoSchema).length(2),
 });
 
 export const AnalysisOutputSchema = z.object({
-  season: z.string(),
-  seasonCharacterization: z.string(),
-  seasonExplanation: z.string(),
+  season: z.string().describe("One of the 12 seasons"),
+  seasonExplanation: z.string().describe("Explanation of the season"),
   undertone: z.enum(["Warm", "Cool", "Neutral", "Olive"]),
-  undertoneExplanation: z.string(),
+  undertoneExplanation: z.string().describe("Explanation of the undertone"),
   contrastLevel: z.enum(["High", "Medium", "Low"]),
-  contrastLevelExplanation: z.string(),
-  personalPalette: PersonalPaletteSchema,
-  colorsToAvoid: z.array(ColorToAvoidSchema).length(3),
+  contrastLevelExplanation: z
+    .string()
+    .describe("Explanation of the contrast level"),
+  overallVibe: z.string(),
+  powerColors: z.array(ColorInfoSchema).length(5),
+  colorsToAvoid: z.array(ColorInfoSchema).length(3),
   primaryMetal: z.enum(["Gold", "Silver", "Bronze"]),
   metalTonesExplanation: z.string(),
+  styleScenarios: z.object({
+    professional: StyleScenarioSchema,
+    elegant: StyleScenarioSchema,
+    casual: StyleScenarioSchema,
+  }),
   hairColorGuidance: z.object({
     lighterToneEffect: z
       .string()
@@ -51,18 +53,12 @@ export const AnalysisOutputSchema = z.object({
       .describe(
         "Effect of going darker, e.g., 'Your eyes will gain intensity.'"
       ),
-    colorToAvoid: z
-      .string()
-      .describe("Specific hair color to avoid, e.g., 'Ashy blonde because...'"),
-  }),
-  hairColorExplanation: z.string(),
-  styleScenarios: z.object({
-    professional: StyleScenarioSchema,
-    elegant: StyleScenarioSchema,
-    casual: StyleScenarioSchema,
+    colorToAvoid: z.object({
+      color: ColorInfoSchema,
+      explanation: z.string(),
+    }),
   }),
   makeupRecommendations: MakeupRecommendationsSchema.optional(),
-  overallVibe: z.string(),
 });
 
 export type AnalysisOutput = z.infer<typeof AnalysisOutputSchema>;

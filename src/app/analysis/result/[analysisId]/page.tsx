@@ -187,7 +187,7 @@ const ColorListCard = ({ title, colors }: ColorListCardProps) => (
 interface StyleCardProps {
   description: string;
   scenario: string;
-  colors: string[];
+  colors: ColorInfo[];
   icon: React.ReactNode;
 }
 
@@ -202,9 +202,9 @@ const StyleCard = ({ description, scenario, colors, icon }: StyleCardProps) => (
       <div className="flex items-center gap-2 mt-6">
         {colors.map((color) => (
           <div
-            key={color}
+            key={color.hex}
             className="size-8 rounded-md border border-black/10 shadow"
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: color.hex }}
           />
         ))}
       </div>
@@ -216,15 +216,24 @@ interface HairCardProps {
   description: string;
   title: string;
   icon: React.ReactNode;
+  color?: ColorInfo;
 }
-const HairCard = ({ description, title, icon }: HairCardProps) => (
+const HairCard = ({ description, title, icon, color }: HairCardProps) => (
   <Card className="border-black/25 p-0">
     <CardContent className="p-5 space-y-2 relative">
       {icon}
-      <p className="text-xs text-brown/60 font-medium">{title}</p>
-      <p className="text-foreground text-sm tracking-tight leading-normal max-w-[90%]">
-        {description}
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs text-brown/60 font-medium">{title}</p>
+        <p className="text-foreground text-sm tracking-tight leading-normal max-w-[90%]">
+          {description}
+        </p>
+        {color && (
+          <div
+            className="w-20 h-20 rounded-xl border border-black/10 shadow mt-4"
+            style={{ backgroundColor: color.hex }}
+          />
+        )}
+      </div>
     </CardContent>
   </Card>
 );
@@ -234,6 +243,58 @@ const metalGradients = {
   Silver: "linear-gradient(to top, #A8A8A8, #CCCCCC)",
   Bronze: "linear-gradient(to top, #EB9B82, #D4836A)",
 };
+
+interface MakeupCardProps {
+  title: string;
+  description: string;
+  color: ColorInfo;
+}
+
+const MakeupCard = ({ title, description, color }: MakeupCardProps) => (
+  <Card className="overflow-hidden w-full p-6">
+    <CardHeader className="p-0 justify-start">
+      <CardTitle className="text-xs text-brown/60 font-medium">
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-0 flex justify-between items-center">
+      <p className="text-foreground text-sm tracking-tight leading-normal">
+        {description}
+      </p>
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className="w-20 h-20 rounded-xl border border-black/10 shadow"
+          style={{ backgroundColor: color.hex }}
+          title={`${color.name} (${color.hex})`}
+        />
+        <div className="flex gap-1 items-center">
+          <p className="text-xs text-muted-foreground">{color.hex}</p>
+          <CopyButton textToCopy={color.hex} />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+interface MakeupColorCardProps {
+  title: string;
+  colors: ColorInfo[];
+}
+
+const MakeupColorCard = ({ title, colors }: MakeupColorCardProps) => (
+  <Card className="overflow-hidden w-full p-6">
+    <CardHeader className="p-0 justify-start mb-12">
+      <CardTitle className="text-xs text-brown/60 font-medium">
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-0 flex flex-col gap-6">
+      {colors.map((color) => (
+        <ColorItem key={color.hex} name={color.name} hex={color.hex} />
+      ))}
+    </CardContent>
+  </Card>
+);
 
 interface StoredInputData {
   extractedFeatures: ExtractedColors & {
@@ -325,10 +386,6 @@ export default async function AnalysisResultsPage({
   const showSavePrompt = isAnonymousUser && analysisBelongsToCurrentUser;
 
   const result = analysisRecord.result as AnalysisOutput;
-  const inputData = analysisRecord.inputData as StoredInputData;
-  const extractedFeatures = inputData.extractedFeatures ?? {};
-  const questionnaireData = inputData.questionnaireData ?? {};
-
   return (
     <div className="container mx-auto pt-24 pb-24 max-w-7xl px-4 lg:px-0">
       <div className="flex flex-col w-full items-center mb-8 lg:mb-12">
@@ -412,11 +469,11 @@ export default async function AnalysisResultsPage({
           <TabsContent value="colors" className="flex flex-col gap-8 w-full">
             <ColorListCard
               title="Power colors ✨"
-              colors={result.personalPalette?.powerColors ?? []}
+              colors={result.powerColors}
             />
             <ColorListCard
               title="Colors to avoid 🚫"
-              colors={result.colorsToAvoid?.map((item) => item.color) ?? []}
+              colors={result.colorsToAvoid}
             />
           </TabsContent>
 
@@ -431,7 +488,9 @@ export default async function AnalysisResultsPage({
                     result.styleScenarios.professional.colorCombinationAdvice
                   }
                   scenario="Professional"
-                  colors={["#2C3C55", "#C19A6B"]}
+                  colors={
+                    result.styleScenarios.professional.colorCombinationColors
+                  }
                   icon={
                     <Briefcase className="size-5 text-orange absolute top-5 right-5" />
                   }
@@ -441,7 +500,7 @@ export default async function AnalysisResultsPage({
                     result.styleScenarios.elegant.colorCombinationAdvice
                   }
                   scenario="Elegant"
-                  colors={[]}
+                  colors={result.styleScenarios.elegant.colorCombinationColors}
                   icon={
                     <Gem className="size-5 text-orange absolute top-5 right-5" />
                   }
@@ -451,7 +510,7 @@ export default async function AnalysisResultsPage({
                     result.styleScenarios.casual.colorCombinationAdvice
                   }
                   scenario="Casual"
-                  colors={[]}
+                  colors={result.styleScenarios.casual.colorCombinationColors}
                   icon={
                     <Shirt className="size-5 text-orange absolute top-5 right-5" />
                   }
@@ -509,7 +568,8 @@ export default async function AnalysisResultsPage({
               }
             />
             <HairCard
-              description={result.hairColorGuidance.colorToAvoid}
+              color={result.hairColorGuidance.colorToAvoid.color}
+              description={result.hairColorGuidance.colorToAvoid.explanation}
               title="Color to avoid"
               icon={
                 <AlertCircle className="size-5 text-orange absolute top-5 right-5" />
@@ -518,11 +578,38 @@ export default async function AnalysisResultsPage({
           </TabsContent>
 
           {result.makeupRecommendations && (
-            <TabsContent value="makeup" className="mt-0">
-              <Card>
-                <CardHeader>Makeup Content Placeholder</CardHeader>
-                <CardContent>Details about makeup go here.</CardContent>
-              </Card>
+            <TabsContent value="makeup" className="flex flex-col gap-10">
+              <div className="flex flex-col gap-3 items-start">
+                <h2 className="title text-brown">Makeup advice 💄</h2>
+                <p className="text-muted-foreground text-sm tracking-tight leading-normal">
+                  {result.makeupRecommendations.generalMakeupAdvice}
+                </p>
+              </div>
+              <MakeupCard
+                title="Foundation Undertone"
+                description={
+                  result.makeupRecommendations.foundationUndertoneGuidance
+                    .description
+                }
+                color={
+                  result.makeupRecommendations.foundationUndertoneGuidance.color
+                }
+              />
+              <MakeupCard
+                title="Blush"
+                description={
+                  result.makeupRecommendations.blushRecommendation.description
+                }
+                color={result.makeupRecommendations.blushRecommendation.color}
+              />
+              <MakeupColorCard
+                title="Lip colors"
+                colors={result.makeupRecommendations.complementaryLipColors}
+              />
+              <MakeupColorCard
+                title="Eye colors"
+                colors={result.makeupRecommendations.complementaryEyeColors}
+              />
             </TabsContent>
           )}
         </div>

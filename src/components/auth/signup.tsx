@@ -25,8 +25,8 @@ export function SignUp() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
+    <Card className="w-full max-w-md space-y-4">
+      <CardHeader className="mb-8">
         <CardTitle className="text-lg md:text-xl tracking-tighter">
           Sign Up
         </CardTitle>
@@ -37,54 +37,54 @@ export function SignUp() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col gap-4">
+        <div className="space-y-8">
           <div className="space-y-4">
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Name"
-                  required
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email"
-                  required
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  required
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm Password"
-                  required
-                />
-              </div>
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name"
+                required
+              />
             </div>
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+              />
+            </div>
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+              />
+            </div>
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-4">
             <Button
               variant="season"
               type="submit"
@@ -120,21 +120,20 @@ export function SignUp() {
                 "Create an account"
               )}
             </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                await signIn.social({
+                  provider: "google",
+                  callbackURL: "/profile",
+                });
+              }}
+            >
+              <Icons.google />
+              Sign up with Google
+            </Button>
           </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={async () => {
-              await signIn.social({
-                provider: "google",
-                callbackURL: "/profile",
-              });
-            }}
-          >
-            <Icons.google />
-            Sign up with Google
-          </Button>
         </div>
       </CardContent>
     </Card>

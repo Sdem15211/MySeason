@@ -25,8 +25,8 @@ export function SignIn() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   return (
-    <Card className="max-w-md w-full">
-      <CardHeader>
+    <Card className="max-w-md w-full space-y-4">
+      <CardHeader className="mb-8">
         <CardTitle className="text-lg md:text-xl tracking-tighter">
           Sign In
         </CardTitle>
@@ -35,8 +35,8 @@ export function SignIn() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
+        <div className="space-y-8">
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -50,7 +50,7 @@ export function SignIn() {
             />
           </div>
 
-          <div className="grid gap-2">
+          <div className="space-y-2">
             <div className="flex items-center">
               <Label htmlFor="password">Password</Label>
               <Link href="#" className="ml-auto inline-block text-sm underline">
@@ -68,54 +68,60 @@ export function SignIn() {
             />
           </div>
 
-          <Button
-            variant="season"
-            type="submit"
-            className="w-full"
-            disabled={loading}
-            onClick={async () => {
-              await signIn.email(
-                { email, password },
-                {
-                  onResponse: () => {
-                    setLoading(false);
-                  },
-                  onRequest: () => {
-                    setLoading(true);
-                  },
-                  onError: (ctx) => {
-                    toast.error(ctx.error.message);
-                  },
-                  onSuccess: () => {
-                    router.push("/profile");
-                    router.refresh();
-                  },
-                }
-              );
-            }}
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Login"}
-          </Button>
-
-          <div
-            className={cn(
-              "w-full gap-2 flex items-center",
-              "justify-between flex-col"
-            )}
-          >
+          <div className="space-y-4">
             <Button
-              variant="outline"
-              className={cn("w-full gap-2")}
+              variant="season"
+              type="submit"
+              className="w-full"
+              disabled={loading}
               onClick={async () => {
-                await signIn.social({
-                  provider: "google",
-                  callbackURL: "/profile",
-                });
+                await signIn.email(
+                  { email, password },
+                  {
+                    onResponse: () => {
+                      setLoading(false);
+                    },
+                    onRequest: () => {
+                      setLoading(true);
+                    },
+                    onError: (ctx) => {
+                      toast.error(ctx.error.message);
+                    },
+                    onSuccess: () => {
+                      router.push("/profile");
+                      router.refresh();
+                    },
+                  }
+                );
               }}
             >
-              <Icons.google />
-              Sign in with Google
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                "Login"
+              )}
             </Button>
+
+            <div
+              className={cn(
+                "w-full gap-2 flex items-center",
+                "justify-between flex-col"
+              )}
+            >
+              <Button
+                variant="outline"
+                className={cn("w-full gap-2 border-black/25 bg-transparent")}
+                onClick={async () => {
+                  await signIn.social({
+                    provider: "google",
+                    callbackURL: "/profile",
+                  });
+                }}
+              >
+                <Icons.google />
+                Sign in with Google
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
