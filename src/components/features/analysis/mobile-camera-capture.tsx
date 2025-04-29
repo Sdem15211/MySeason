@@ -40,7 +40,7 @@ export function MobileCameraCapture({
   >(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // --- Camera Setup (Reverted to single function) ---
+  // --- Camera Setup ---
   const setupCamera = useCallback(async () => {
     setStatus("initializing"); // Ensure status is set
     setCapturedImageDataUrl(null);
@@ -50,7 +50,7 @@ export function MobileCameraCapture({
     if (stream) {
       console.log("[MobileCameraCapture] Stopping existing stream tracks.");
       stream.getTracks().forEach((track) => track.stop());
-      setStream(null); // Clear previous stream state
+      setStream(null);
     }
 
     try {
@@ -216,7 +216,7 @@ export function MobileCameraCapture({
     }
   }, [status, stream]);
 
-  // --- Retake Logic (Simplified) ---
+  // --- Retake Logic ---
   const handleRetake = useCallback(() => {
     if (status !== "captured" && status !== "error") {
       console.warn(
@@ -291,13 +291,7 @@ export function MobileCameraCapture({
           setStatus("success");
           onSuccess?.();
           toast.dismiss();
-          if (context === "secondary") {
-            toast.success(
-              "Selfie accepted! You can return to your other device."
-            );
-          } else {
-            toast.success("Selfie accepted!");
-          }
+          toast.success("Selfie accepted!");
         } catch (err: unknown) {
           console.error("Error during mobile submission:", err);
           const message =
@@ -310,14 +304,11 @@ export function MobileCameraCapture({
           toast.dismiss();
           toast.error(message, { duration: 8000 });
 
-          // Attempt to delete blob only if upload succeeded but validation failed OR another error occurred after upload
           if (uploadedBlob?.url && !validationSuccessful) {
             console.warn(
               `Attempting to delete blob ${uploadedBlob.url} due to error: ${message}`
             );
-            // Don't await deletion, fire and forget is acceptable here
             fetch("/api/v1/blob/delete", {
-              // Ensure this endpoint exists and is secured
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ blobUrl: uploadedBlob.url, sessionId }),
@@ -328,9 +319,9 @@ export function MobileCameraCapture({
         }
       },
       "image/jpeg",
-      0.9 // Match the capture format and quality
+      0.9
     );
-  }, [status, sessionId, onSuccess, onError, context]); // Added context to dependency array
+  }, [status, sessionId, onSuccess, onError, context]);
 
   const isLoading = ["uploading", "validating"].includes(status);
   const showCameraFeed = status === "initializing" || status === "streaming";
@@ -341,7 +332,7 @@ export function MobileCameraCapture({
     capturedImageDataUrl;
 
   return (
-    <div className="flex flex-col h-screen w-full mx-auto pt-22 gap-8">
+    <div className="flex flex-col h-[100dvh] w-full mx-auto pt-22 gap-8">
       <div className="flex flex-col gap-2 items-center justify-center px-12 mx-auto">
         <h1 className="title">Time to take your selfie! 📸</h1>
         <p className="subtitle">
@@ -384,7 +375,7 @@ export function MobileCameraCapture({
         </div>
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-white bg-black/60 z-10">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin text-orange" />
             <span>
               {status === "uploading" ? "Uploading..." : "Validating..."}
             </span>
@@ -397,7 +388,7 @@ export function MobileCameraCapture({
             src="/assets/overlay.png"
             alt="Camera Overlay"
             fill
-            className="object-cover"
+            className="object-cover scale-105"
           />
         </div>
 
@@ -427,14 +418,11 @@ export function MobileCameraCapture({
           {/* Success Message */}
           {status === "success" && (
             <div className="text-center pt-4 space-y-3">
-              <p className="text-lg font-medium text-green-600 dark:text-green-400">
+              <p className="text-base font-medium text-white">
                 {context === "secondary"
                   ? "✅ Success! You can now return to your original device."
                   : "✅ Success! Selfie captured."}
               </p>
-              <Button onClick={handleRetake} variant="outline">
-                <RotateCcw className="mr-2 h-4 w-4" /> Test Again
-              </Button>
             </div>
           )}
 
@@ -445,7 +433,6 @@ export function MobileCameraCapture({
                 <X className="h-5 w-5 flex-shrink-0" />
                 <span>{errorMessage}</span>
               </p>
-              {/* Allow retake based on specific error messages (or if capturedImageDataUrl exists, implying it wasn't an init error) */}
               {(capturedImageDataUrl ||
                 (errorMessage !==
                   "Could not access camera. Please ensure permissions are granted." &&
@@ -453,8 +440,8 @@ export function MobileCameraCapture({
                     "Camera access denied. Please grant permission in browser settings." && // Corrected typo
                   errorMessage !== "No camera found on this device." &&
                   !errorMessage.startsWith("Internal error:"))) && (
-                <Button onClick={handleRetake} variant="outline">
-                  <RotateCcw className="mr-2 h-4 w-4" /> Try Again
+                <Button onClick={handleRetake} variant="secondary" size="lg">
+                  <RotateCcw className="mr-2 size-4" /> Try again
                 </Button>
               )}
             </div>

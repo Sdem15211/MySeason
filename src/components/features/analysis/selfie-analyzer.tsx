@@ -352,12 +352,12 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
         </div>
       )}
 
-      {isLikelyDesktop && !isDevelopment && status == "desktop_qr" && (
+      {isLikelyDesktop && !isDevelopment && status === "desktop_qr" && (
         <div>
           <div className="bg-gradient-to-t from-[#DF6435] to-[#F48257] p-14 inline-block rounded-[1.5rem] shadow-season">
             <QRCode value={getQrCodeUrl()} size={200} level="M" />
           </div>
-          <div className="flex items-center justify-center space-x-2 pt-4 text-muted-foreground">
+          <div className="flex items-center justify-center space-x-2 pt-4 text-muted-foreground mt-2">
             <Loader2 className="h-5 w-5 animate-spin text-orange" />
             <span className="subtitle">Waiting for image from phone...</span>
           </div>
@@ -405,7 +405,7 @@ export function SelfieAnalyzer({ sessionId, className }: SelfieAnalyzerProps) {
       {status === "redirecting" && (
         <div className="flex items-center space-x-2 text-muted-foreground p-8">
           <Loader2 className="h-5 w-5 animate-spin text-orange" />
-          <span>Processing...</span>
+          <span>Moving on to questionnaire...</span>
         </div>
       )}
     </div>

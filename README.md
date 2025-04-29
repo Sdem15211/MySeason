@@ -19,7 +19,7 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
 
 - [ ] **New UI designs implementation!!**
 
-  - [ ] Homepage
+  - [x] Homepage
   - [x] QR code scan screen
   - [ ] Mobile selfie capturing screen!!
   - [x] Questionnaire
@@ -31,7 +31,7 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
     - [x] Hair tab
     - [x] Makeup tab
   - [x] Signup/Login screen
-  - [ ] Profile page
+  - [x] Profile page
 
 - [ ] **Optimize LLM prompt**
 - [ ] **Feature: "Personal Card" Generation & Download**

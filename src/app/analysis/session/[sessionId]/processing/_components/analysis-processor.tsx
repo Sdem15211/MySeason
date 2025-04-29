@@ -45,13 +45,13 @@ const POLLING_INTERVAL_MS = 3000;
 const MAX_POLLING_ATTEMPTS = 30;
 
 const mockProgressSteps = [
-  { message: "Processing your image... 📸", duration: 1000 },
+  { message: "Processing your image... 📸", duration: 2000 },
   {
     message: "Extracting relevant values from your face... 🤩",
     duration: 3000,
   },
   { message: "Generating your analysis... 🧠", duration: 4000 },
-  { message: "Putting it all together... 📝", duration: 6000 },
+  { message: "Putting it all together... 📝", duration: 7000 },
 ];
 
 export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
@@ -300,6 +300,7 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
         <>
           <Check className="h-12 w-12 text-orange" />
           <p className="text-center h-10 title">{progressMessage}</p>
+          <p className="subtitle">Moving on to questionnaire...</p>
         </>
       ) : (
         <>
