@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Camera, RotateCcw, Check, Loader2, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface MobileCameraCaptureProps {
   sessionId: string;
@@ -340,24 +341,29 @@ export function MobileCameraCapture({
     capturedImageDataUrl;
 
   return (
-    // Adjusted main container: takes full height, uses flex column
-    <div className="flex flex-col h-full w-full">
-      {/* Canvas for processing, hidden from user */}
+    <div className="flex flex-col h-screen w-full mx-auto pt-22 gap-8">
+      <div className="flex flex-col gap-2 items-center justify-center px-12 mx-auto">
+        <h1 className="title">Time to take your selfie! 📸</h1>
+        <p className="subtitle">
+          Position your face within the outline and take your photo in natural
+          daylight.
+        </p>
+      </div>
+
       <canvas ref={canvasRef} className="hidden"></canvas>
 
       {/* Camera View / Preview Area - takes remaining height */}
-      <div className="relative flex-grow w-full overflow-hidden flex items-center justify-center rounded-t-4xl">
+      <div className="relative w-full h-full overflow-hidden flex items-center justify-center rounded-t-[48px]">
         <div className="absolute inset-0">
           {showCameraFeed && (
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              muted // Mute to avoid potential audio feedback loops
-              // Use contain to fit video without cropping, mirror horizontally
+              muted
               className={cn(
                 "w-full h-full object-cover scale-x-[-1]",
-                status === "initializing" && "opacity-0" // Hide visually during init
+                status === "initializing" && "opacity-0"
               )}
             />
           )}
@@ -372,24 +378,10 @@ export function MobileCameraCapture({
             <img
               src={capturedImageDataUrl}
               alt="Captured selfie preview"
-              // Use contain to show the whole image
               className="w-full h-full object-cover"
             />
           )}
         </div>
-
-        {(showCameraFeed || showPreview) &&
-          !isLoading &&
-          status !== "success" && (
-            <div
-              className="absolute inset-0 pointer-events-none bg-[url('/assets/oval-mask.svg')] bg-cover bg-no-repeat"
-              style={{
-                backgroundPosition: "center",
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-              }}
-            ></div>
-          )}
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-white bg-black/60 z-10">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -398,162 +390,76 @@ export function MobileCameraCapture({
             </span>
           </div>
         )}
-      </div>
 
-      {/* Bottom Action Bar */}
-      <div className="shrink-0 w-full p-6 pb-8 flex flex-col items-center">
-        {status === "streaming" && (
-          <Button onClick={handleCapture}>
-            {/* Inner circle effect */}
-            <svg
-              width="138"
-              height="138"
-              viewBox="0 0 138 138"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <g filter="url(#filter0_d_6_77)">
-                <rect
-                  x="39"
-                  y="31"
-                  width="60"
-                  height="60"
-                  rx="16"
-                  fill="#F48257"
-                />
-              </g>
-              <g filter="url(#filter1_d_6_77)">
-                <rect
-                  x="33.5"
-                  y="25.5"
-                  width="71"
-                  height="71"
-                  rx="21.5"
-                  stroke="#F48257"
-                  stroke-width="3"
-                  shape-rendering="crispEdges"
-                />
-              </g>
-              <defs>
-                <filter
-                  id="filter0_d_6_77"
-                  x="7"
-                  y="7"
-                  width="124"
-                  height="124"
-                  filterUnits="userSpaceOnUse"
-                  color-interpolation-filters="sRGB"
-                >
-                  <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                  <feColorMatrix
-                    in="SourceAlpha"
-                    type="matrix"
-                    values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                    result="hardAlpha"
-                  />
-                  <feOffset dy="8" />
-                  <feGaussianBlur stdDeviation="16" />
-                  <feComposite in2="hardAlpha" operator="out" />
-                  <feColorMatrix
-                    type="matrix"
-                    values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"
-                  />
-                  <feBlend
-                    mode="normal"
-                    in2="BackgroundImageFix"
-                    result="effect1_dropShadow_6_77"
-                  />
-                  <feBlend
-                    mode="normal"
-                    in="SourceGraphic"
-                    in2="effect1_dropShadow_6_77"
-                    result="shape"
-                  />
-                </filter>
-                <filter
-                  id="filter1_d_6_77"
-                  x="0"
-                  y="0"
-                  width="138"
-                  height="138"
-                  filterUnits="userSpaceOnUse"
-                  color-interpolation-filters="sRGB"
-                >
-                  <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                  <feColorMatrix
-                    in="SourceAlpha"
-                    type="matrix"
-                    values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
-                    result="hardAlpha"
-                  />
-                  <feOffset dy="8" />
-                  <feGaussianBlur stdDeviation="16" />
-                  <feComposite in2="hardAlpha" operator="out" />
-                  <feColorMatrix
-                    type="matrix"
-                    values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"
-                  />
-                  <feBlend
-                    mode="normal"
-                    in2="BackgroundImageFix"
-                    result="effect1_dropShadow_6_77"
-                  />
-                  <feBlend
-                    mode="normal"
-                    in="SourceGraphic"
-                    in2="effect1_dropShadow_6_77"
-                    result="shape"
-                  />
-                </filter>
-              </defs>
-            </svg>
-          </Button>
-        )}
+        {/* overlay */}
+        <div className="absolute inset-0">
+          <Image
+            src="/assets/overlay.png"
+            alt="Camera Overlay"
+            fill
+            className="object-cover"
+          />
+        </div>
 
-        {status === "captured" && !isLoading && (
-          // Show options only after capture and when not loading
-          <div className="flex justify-center items-center space-x-4 w-full">
-            <Button onClick={handleRetake} variant="secondary">
-              <RotateCcw className="mr-2 h-4 w-4" /> Retake
-            </Button>
-            <Button onClick={handleSubmit} variant="season">
-              Use Photo <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* Bottom Action Bar */}
+        <div className="absolute bottom-0 z-10 w-full pb-12 flex justify-center px-8">
+          {status === "streaming" && (
+            <Button
+              onClick={handleCapture}
+              aria-label="Capture Photo"
+              className="size-18 rounded-2xl flex items-center justify-center bg-orange ring-4 ring-offset-3 ring-orange ring-offset-black/50 active:bg-orange/70 hover:bg-orange"
+              variant="ghost"
+            ></Button>
+          )}
 
-        {/* Success Message Area */}
-        {status === "success" && (
-          <div className="text-center pt-4">
-            <p className="text-lg font-medium text-green-600 dark:text-green-400">
-              {context === "secondary"
-                ? "✅ Success! You can now return to your original device."
-                : "✅ Success! Selfie captured."}
-            </p>
-          </div>
-        )}
-
-        {/* Error Message Area */}
-        {status === "error" && errorMessage && (
-          <div className="text-center space-y-3 pt-4 w-full">
-            <p className="text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
-              <X className="h-5 w-5 flex-shrink-0" />
-              <span>{errorMessage}</span>
-            </p>
-            {/* Allow retake based on specific error messages (or if capturedImageDataUrl exists, implying it wasn't an init error) */}
-            {(capturedImageDataUrl ||
-              (errorMessage !==
-                "Could not access camera. Please ensure permissions are granted." &&
-                errorMessage !==
-                  "Camera access denied. Please grant permission in browser settings." && // Corrected typo
-                errorMessage !== "No camera found on this device." &&
-                !errorMessage.startsWith("Internal error:"))) && (
-              <Button onClick={handleRetake} variant="outline">
-                <RotateCcw className="mr-2 h-4 w-4" /> Try Again
+          {/* Retake/Submit Buttons */}
+          {status === "captured" && !isLoading && (
+            <div className="flex justify-between items-center space-x-4 w-full">
+              <Button onClick={handleRetake} variant="secondary" size="lg">
+                <RotateCcw className="mr-2 size-4" /> Retake
               </Button>
-            )}
-          </div>
-        )}
+              <Button onClick={handleSubmit} variant="season" size="lg">
+                Use Photo <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {status === "success" && (
+            <div className="text-center pt-4 space-y-3">
+              <p className="text-lg font-medium text-green-600 dark:text-green-400">
+                {context === "secondary"
+                  ? "✅ Success! You can now return to your original device."
+                  : "✅ Success! Selfie captured."}
+              </p>
+              <Button onClick={handleRetake} variant="outline">
+                <RotateCcw className="mr-2 h-4 w-4" /> Test Again
+              </Button>
+            </div>
+          )}
+
+          {/* Error Message Area */}
+          {status === "error" && errorMessage && (
+            <div className="text-center space-y-3 pt-4 w-full">
+              <p className="text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
+                <X className="h-5 w-5 flex-shrink-0" />
+                <span>{errorMessage}</span>
+              </p>
+              {/* Allow retake based on specific error messages (or if capturedImageDataUrl exists, implying it wasn't an init error) */}
+              {(capturedImageDataUrl ||
+                (errorMessage !==
+                  "Could not access camera. Please ensure permissions are granted." &&
+                  errorMessage !==
+                    "Camera access denied. Please grant permission in browser settings." && // Corrected typo
+                  errorMessage !== "No camera found on this device." &&
+                  !errorMessage.startsWith("Internal error:"))) && (
+                <Button onClick={handleRetake} variant="outline">
+                  <RotateCcw className="mr-2 h-4 w-4" /> Try Again
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
