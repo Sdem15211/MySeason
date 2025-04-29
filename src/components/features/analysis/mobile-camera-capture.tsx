@@ -354,6 +354,7 @@ export function MobileCameraCapture({
               muted
               className={cn(
                 "w-full h-full object-cover scale-x-[-1]",
+                "transition-opacity duration-150",
                 status === "initializing" && "opacity-0"
               )}
             />
@@ -388,7 +389,7 @@ export function MobileCameraCapture({
             src="/assets/overlay.png"
             alt="Camera Overlay"
             fill
-            className="object-cover scale-105"
+            className="object-cover"
           />
         </div>
 
