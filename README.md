@@ -17,11 +17,11 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
 
 ### Pending ⏳
 
-- [ ] **New UI designs implementation!!**
+- [x] **New UI designs implementation!!**
 
   - [x] Homepage
   - [x] QR code scan screen
-  - [ ] Mobile selfie capturing screen!!
+  - [x] Mobile selfie capturing screen!!
   - [x] Questionnaire
   - [x] Processing page
   - [x] Analysis result page
@@ -33,7 +33,7 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
   - [x] Signup/Login screen
   - [x] Profile page
 
-- [ ] **Optimize LLM prompt**
+- [x] **Optimize LLM prompt**
 - [ ] **Feature: "Personal Card" Generation & Download**
 - [ ] **Backend improvements**
   - [ ] data cleanup

@@ -332,7 +332,7 @@ export function MobileCameraCapture({
     capturedImageDataUrl;
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full mx-auto pt-22 gap-8">
+    <div className="flex flex-col h-screen w-full mx-auto pt-22 gap-8">
       <div className="flex flex-col gap-2 items-center justify-center px-12 mx-auto">
         <h1 className="title">Time to take your selfie! 📸</h1>
         <p className="subtitle">
