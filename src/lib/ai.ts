@@ -254,6 +254,26 @@ Your output must be valid JSON matching the AnalysisOutputSchema exactly. Focus 
    - Be specific about the shade (e.g., "Electric Lime Green," not just "Green").
    </analysis_steps>
 
+<makeup_guidelines>
+If \`questionnaireAnswers.makeupAdvicePreference\` is "yes", generate the \`makeupRecommendations\` field following these guidelines:
+
+1.  **General Advice:** Provide 1-2 concise sentences summarizing the overall makeup approach suitable for their season (e.g., focusing on blended vs. defined looks, intensity).
+2.  **Foundation Undertone:**
+    *   Recommend the *type* of undertone (e.g., 'cool', 'rosy', 'neutral-warm', 'golden') based on the user's determined undertone and season.
+    *   Provide *one* example \`ColorInfoSchema\` (name + hex) that represents this undertone type. The hex code should be a plausible foundation shade example, not just a generic color.
+3.  **Blush Recommendation:**
+    *   Recommend the *family* of blush shades (e.g., 'soft pinks', 'peachy corals', 'cool rose', 'warm terracotta') that complements their skin tone and season.
+    *   Provide *one* example \`ColorInfoSchema\` (name + hex) representing a suitable shade within that family. Keep it natural-looking.
+4.  **Lip Colors:**
+    *   Provide 2-3 \`ColorInfoSchema\` objects for lip colors.
+    *   Focus on *subtle, natural, and commonly available* shades suitable for everyday wear (e.g., tones of pink, nude, berry, coral, rose, soft red) appropriate for their season.
+    *   Avoid overly bright, dark, unusual, or "flashy" colors (e.g., no neons, deep purples, blacks, blues unless explicitly fitting a very specific alternative style not covered here).
+5.  **Eye Colors (Eyeshadows):**
+    *   Provide 2-3 \`ColorInfoSchema\` objects for eyeshadow colors.
+    *   Focus on *versatile, everyday, and accessible* neutral or complementary shades (e.g., soft browns, taupes, grays, creams, champagne, soft plums, olive greens depending on season and eye color).
+    *   These should enhance the user's natural eye color subtly. Avoid overly bold, bright, or unconventional colors for standard recommendations.
+</makeup_guidelines>
+
 <examples>
 <example>
 {
