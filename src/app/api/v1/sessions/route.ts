@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import Stripe from "stripe";
-import { generateUUID } from "@/lib/utils";
+import { generateUUID } from "@/lib/node-utils";
 import { db } from "@/db/index";
 import { sessions } from "@/db/schema";
 import { withErrorHandler } from "@/lib/api-helpers";

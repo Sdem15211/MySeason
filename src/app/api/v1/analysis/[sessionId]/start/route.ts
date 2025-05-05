@@ -3,7 +3,7 @@ import { headers as getHeaders } from "next/headers";
 import { db } from "@/db";
 import { sessions, analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { generateUUID } from "@/lib/utils";
+import { generateUUID } from "@/lib/node-utils";
 import { AnalysisOutput } from "@/lib/schemas/analysis-output.schema";
 import { generateAnalysis } from "@/lib/ai";
 import { extractFacialColors } from "@/lib/image-analysis";
