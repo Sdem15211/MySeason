@@ -34,12 +34,6 @@ const stripe = new Stripe(stripeSecretKey!, {
 });
 
 const createSessionAndCheckoutLogic = async () => {
-  if (!stripePriceId || !appUrl) {
-    throw new Error(
-      "Server configuration error: Missing Stripe Price ID or App URL."
-    );
-  }
-
   const sessionId = generateUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MINUTES * 60 * 1000);
