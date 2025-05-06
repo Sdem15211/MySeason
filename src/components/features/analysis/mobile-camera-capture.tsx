@@ -345,109 +345,117 @@ export function MobileCameraCapture({
 
       {/* Camera View / Preview Area - takes remaining height */}
       <div className="relative w-full h-full overflow-hidden flex items-center justify-center rounded-t-[48px]">
-        <div className="absolute inset-0">
-          {showCameraFeed && (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={cn(
-                "w-full h-full object-cover scale-x-[-1]",
-                "transition-opacity duration-150",
-                status === "initializing" && "opacity-0"
-              )}
-            />
-          )}
-          {status === "initializing" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/50">
-              <Loader2 className="h-8 w-8 animate-spin mb-2 text-orange" />
-              <span>Starting Camera...</span>
-            </div>
-          )}
-          {showPreview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={capturedImageDataUrl}
-              alt="Captured selfie preview"
-              className="w-full h-full object-cover"
-            />
-          )}
-        </div>
-        {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-white bg-black/60 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-orange" />
-            <span>
-              {status === "uploading" ? "Uploading..." : "Validating..."}
-            </span>
+        {status === "success" ? (
+          <div className="absolute inset-0 bg-white flex flex-col items-center justify-center z-20 p-8">
+            <Check className="h-16 w-16 text-orange mb-4" />
+            <p className="text-lg font-medium text-black text-center">
+              {context === "secondary"
+                ? "Success! You can now return to your original device."
+                : "Success! Selfie captured."}
+            </p>
           </div>
-        )}
-
-        {/* overlay */}
-        <div className="absolute inset-0">
-          <Image
-            src="/assets/overlay.png"
-            alt="Camera Overlay"
-            fill
-            className="object-cover"
-          />
-        </div>
-
-        {/* Bottom Action Bar */}
-        <div className="absolute bottom-0 z-10 w-full pb-12 flex justify-center px-8">
-          {status === "streaming" && (
-            <Button
-              onClick={handleCapture}
-              aria-label="Capture Photo"
-              className="size-18 rounded-2xl flex items-center justify-center bg-orange ring-4 ring-offset-3 ring-orange ring-offset-black/50 active:bg-orange/70 hover:bg-orange"
-              variant="ghost"
-            ></Button>
-          )}
-
-          {/* Retake/Submit Buttons */}
-          {status === "captured" && !isLoading && (
-            <div className="flex justify-between items-center space-x-4 w-full">
-              <Button onClick={handleRetake} variant="secondary" size="lg">
-                <RotateCcw className="mr-2 size-4" /> Retake
-              </Button>
-              <Button onClick={handleSubmit} variant="season" size="lg">
-                Use Photo <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {status === "success" && (
-            <div className="text-center pt-4 space-y-3">
-              <p className="text-base font-medium text-white">
-                {context === "secondary"
-                  ? "✅ Success! You can now return to your original device."
-                  : "✅ Success! Selfie captured."}
-              </p>
-            </div>
-          )}
-
-          {/* Error Message Area */}
-          {status === "error" && errorMessage && (
-            <div className="text-center space-y-3 pt-4 w-full">
-              <p className="text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
-                <X className="h-5 w-5 flex-shrink-0" />
-                <span>{errorMessage}</span>
-              </p>
-              {(capturedImageDataUrl ||
-                (errorMessage !==
-                  "Could not access camera. Please ensure permissions are granted." &&
-                  errorMessage !==
-                    "Camera access denied. Please grant permission in browser settings." && // Corrected typo
-                  errorMessage !== "No camera found on this device." &&
-                  !errorMessage.startsWith("Internal error:"))) && (
-                <Button onClick={handleRetake} variant="secondary" size="lg">
-                  <RotateCcw className="mr-2 size-4" /> Try again
-                </Button>
+        ) : (
+          <>
+            {/* Original Content when not success */}
+            <div className="absolute inset-0">
+              {showCameraFeed && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={cn(
+                    "w-full h-full object-cover scale-x-[-1]",
+                    "transition-opacity duration-150",
+                    status === "initializing" && "opacity-0"
+                  )}
+                />
+              )}
+              {status === "initializing" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-black/50">
+                  <Loader2 className="h-8 w-8 animate-spin mb-2 text-orange" />
+                  <span>Starting Camera...</span>
+                </div>
+              )}
+              {showPreview && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={capturedImageDataUrl}
+                  alt="Captured selfie preview"
+                  className="w-full h-full object-cover"
+                />
               )}
             </div>
-          )}
-        </div>
+
+            {isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-white bg-black/60 z-10">
+                <Loader2 className="h-8 w-8 animate-spin text-orange" />
+                <span>
+                  {status === "uploading" ? "Uploading..." : "Validating..."}
+                </span>
+              </div>
+            )}
+
+            {/* overlay */}
+            <div className="absolute inset-0">
+              <Image
+                src="/assets/overlay.png"
+                alt="Camera Overlay"
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            {/* Bottom Action Bar */}
+            <div className="absolute bottom-0 z-10 w-full pb-12 flex justify-center px-8">
+              {status === "streaming" && (
+                <Button
+                  onClick={handleCapture}
+                  aria-label="Capture Photo"
+                  className="size-18 rounded-2xl flex items-center justify-center bg-orange ring-4 ring-offset-3 ring-orange ring-offset-black/50 active:bg-orange/70 hover:bg-orange"
+                  variant="ghost"
+                ></Button>
+              )}
+
+              {/* Retake/Submit Buttons */}
+              {status === "captured" && !isLoading && (
+                <div className="flex justify-between items-center space-x-4 w-full">
+                  <Button onClick={handleRetake} variant="secondary" size="lg">
+                    <RotateCcw className="mr-2 size-4" /> Retake
+                  </Button>
+                  <Button onClick={handleSubmit} variant="season" size="lg">
+                    Use Photo <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Error Message Area (Success Message block originally from line 419-428 is removed) */}
+              {status === "error" && errorMessage && (
+                <div className="text-center space-y-3 pt-4 w-full">
+                  <p className="text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
+                    <X className="h-5 w-5 flex-shrink-0" />
+                    <span>{errorMessage}</span>
+                  </p>
+                  {(capturedImageDataUrl ||
+                    (errorMessage !==
+                      "Could not access camera. Please ensure permissions are granted." &&
+                      errorMessage !==
+                        "Camera access denied. Please grant permission in browser settings." &&
+                      errorMessage !== "No camera found on this device." &&
+                      !errorMessage.startsWith("Internal error:"))) && (
+                    <Button
+                      onClick={handleRetake}
+                      variant="secondary"
+                      size="lg"
+                    >
+                      <RotateCcw className="mr-2 size-4" /> Try again
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

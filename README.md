@@ -34,7 +34,7 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
   - [x] Profile page
 
 - [x] **Optimize LLM prompt**
-- [ ] **Feature: "Personal Card" Generation & Download**
+- [x] **Feature: "Color Passport" Generation & Download**
 - [ ] **Backend improvements**
   - [ ] data cleanup
   - [ ] general backend improvements (error handling, clean up messy code)
