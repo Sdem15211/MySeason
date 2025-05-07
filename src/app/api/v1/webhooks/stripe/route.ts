@@ -48,16 +48,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // Handle Checkout Session Completed (Web Flow)
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-
     const internalSessionId = session.client_reference_id;
-    const paymentIntentId = session.payment_intent as string;
+    const paymentIntentIdFromCheckout = session.payment_intent as string;
     const stripeCheckoutId = session.id;
 
     if (!internalSessionId) {
       console.warn(
-        `Webhook: checkout.session.completed event for Stripe session ${stripeCheckoutId} missing client_reference_id.`
+        `Webhook (checkout.session.completed): Stripe session ${stripeCheckoutId} missing client_reference_id.`
       );
       return NextResponse.json({ received: true });
     }
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         .update(sessions)
         .set({
           status: "payment_complete",
-          paymentIntentId: paymentIntentId,
+          paymentIntentId: paymentIntentIdFromCheckout,
           updatedAt: new Date(),
         })
         .where(eq(sessions.id, internalSessionId))
@@ -89,6 +89,54 @@ export async function POST(req: Request) {
     } catch (dbError) {
       console.error(
         `Webhook: DB error updating internal session ${internalSessionId} for Stripe checkout ${stripeCheckoutId}:`,
+        dbError
+      );
+      return NextResponse.json(
+        { error: "Database update failed." },
+        { status: 500 }
+      );
+    }
+  }
+  // Handle Payment Intent Succeeded (Mobile Flow & potentially others)
+  else if (event.type === "payment_intent.succeeded") {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+    const internalSessionId = paymentIntent.metadata?.internal_session_id;
+    const paymentIntentId = paymentIntent.id;
+
+    if (!internalSessionId) {
+      console.warn(
+        `Webhook (payment_intent.succeeded): PaymentIntent ${paymentIntentId} missing internal_session_id in metadata.`
+      );
+      return NextResponse.json({ received: true });
+    }
+
+    console.log(
+      `Webhook: Handling payment_intent.succeeded for PaymentIntent ${paymentIntentId}, Internal Session ID: ${internalSessionId}`
+    );
+
+    try {
+      const updatedSessions = await db
+        .update(sessions)
+        .set({
+          status: "payment_complete",
+          paymentIntentId: paymentIntentId,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, internalSessionId))
+        .returning({ updatedId: sessions.id });
+
+      if (updatedSessions.length === 0) {
+        console.warn(
+          `Webhook: Internal session ${internalSessionId} not found for successful PaymentIntent ${paymentIntentId}`
+        );
+      } else {
+        console.log(
+          `Webhook: Internal session ${internalSessionId} updated to payment_complete for PaymentIntent ${paymentIntentId}`
+        );
+      }
+    } catch (dbError) {
+      console.error(
+        `Webhook: DB error updating internal session ${internalSessionId} for PaymentIntent ${paymentIntentId}:`,
         dbError
       );
       return NextResponse.json(

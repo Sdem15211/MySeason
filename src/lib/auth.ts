@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { analyses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { expo } from "@better-auth/expo";
 
 export const config = {
   emailAndPassword: {
@@ -41,11 +42,17 @@ export const config = {
         }
       },
     }),
+    expo(),
   ],
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
   secret: process.env.AUTH_SECRET,
+  trustedOrigins: [
+    "myseason://",
+    "https://my-season.vercel.app",
+    "http://localhost:3000",
+  ],
 };
 
 export const auth = betterAuth(config);

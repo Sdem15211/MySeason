@@ -14,6 +14,9 @@ importers:
       '@ai-sdk/google':
         specifier: ^1.2.11
         version: 1.2.11(zod@3.24.2)
+      '@better-auth/expo':
+        specifier: ^1.2.7
+        version: 1.2.7(better-auth@1.2.7)
       '@google-cloud/vision':
         specifier: ^5.1.0
         version: 5.1.0
@@ -215,6 +218,11 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+
+  '@better-auth/expo@1.2.7':
+    resolution: {integrity: sha512-g8qBx7lBFfOWvAzWwNUVZr6IWYwBcZ7D/HcTzBG1zoZmD7PbdseQugWlIeS711vZ/Qqez7ZV0mDwpk2h+uT4nQ==}
+    peerDependencies:
+      better-auth: 1.2.7
 
   '@better-auth/utils@0.2.4':
     resolution: {integrity: sha512-ayiX87Xd5sCHEplAdeMgwkA0FgnXsEZBgDn890XHHwSWNqqRZDYOq3uj2Ei2leTv1I2KbG5HHn60Ah1i2JWZjQ==}
@@ -3624,6 +3632,13 @@ snapshots:
       zod-to-json-schema: 3.24.5(zod@3.24.2)
 
   '@alloc/quick-lru@5.2.0': {}
+
+  '@better-auth/expo@1.2.7(better-auth@1.2.7)':
+    dependencies:
+      '@better-fetch/fetch': 1.1.18
+      better-auth: 1.2.7
+      better-call: 1.0.8
+      zod: 3.24.2
 
   '@better-auth/utils@0.2.4':
     dependencies:
