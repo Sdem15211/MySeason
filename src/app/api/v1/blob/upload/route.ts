@@ -78,6 +78,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           tokenPayload: JSON.stringify({
             sessionId: sessionId,
           }),
+          token: process.env.BLOB_READ_WRITE_TOKEN!,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
