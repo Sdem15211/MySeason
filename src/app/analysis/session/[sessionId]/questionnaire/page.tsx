@@ -69,7 +69,7 @@ export default async function QuestionnairePage({
   }
 
   return (
-    <div className="container mx-auto flex flex-col items-center justify-center h-screen">
+    <div className="container mx-auto flex flex-col items-center justify-center h-screen px-4">
       <QuestionnaireForm sessionId={sessionId} />
     </div>
   );

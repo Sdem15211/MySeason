@@ -258,7 +258,7 @@ export function QuestionnaireForm({ sessionId }: QuestionnaireFormProps) {
   const currentStepDef = steps[currentStep];
 
   return (
-    <Card className="w-[750px] h-[600px] mx-auto flex justify-between flex-col overflow-hidden p-8">
+    <Card className="md:w-[750px] w-full h-[600px] mx-auto flex justify-between flex-col overflow-hidden py-8">
       <CardContent className="flex-grow flex flex-col items-center justify-center space-y-8">
         <div className="w-full mb-8">
           <ProgressIndicator
