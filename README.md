@@ -36,8 +36,7 @@ Built with Next.js 15, React 19, TypeScript, Tailwind CSS, Shadcn UI, Drizzle OR
 - [x] **Optimize LLM prompt**
 - [x] **Feature: "Color Passport" Generation & Download**
 - [ ] **Backend improvements**
-  - [ ] data cleanup
-  - [ ] general backend improvements (error handling, clean up messy code)
+  - [ ] expiration of session
 - [ ] **Frontend improvements**
   - [ ] design & build homepage
 - [ ] **Mobile app (React Native & Expo)**
