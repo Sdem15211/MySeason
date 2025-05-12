@@ -52,6 +52,7 @@ export const config = {
     "myseason://",
     "https://my-season.vercel.app",
     "http://localhost:3000",
+    "exp://192.168.0.160:8081/--",
   ],
 };
 

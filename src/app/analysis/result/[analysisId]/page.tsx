@@ -15,27 +15,27 @@ interface AnalysisResultsPageProps {
   };
 }
 
-export async function generateMetadata({
-  params,
-}: AnalysisResultsPageProps): Promise<Metadata> {
-  const analysisId = (await params).analysisId;
-  // Fetch analysis for title - basic error handling
-  try {
-    const analysisResults = await db
-      .select({ result: analyses.result })
-      .from(analyses)
-      .where(eq(analyses.id, analysisId))
-      .limit(1);
-    const resultData = analysisResults[0]
-      ?.result as Partial<AnalysisOutput> | null;
-    const season = resultData?.season || "Your";
-    return {
-      title: `${season} Season - Color Analysis Results`,
-    };
-  } catch {
-    return { title: `Analysis Results - ${analysisId}` };
-  }
-}
+// export async function generateMetadata({
+//   params,
+// }: AnalysisResultsPageProps): Promise<Metadata> {
+//   const analysisId = (await params).analysisId;
+//   // Fetch analysis for title - basic error handling
+//   try {
+//     const analysisResults = await db
+//       .select({ result: analyses.result })
+//       .from(analyses)
+//       .where(eq(analyses.id, analysisId))
+//       .limit(1);
+//     const resultData = analysisResults[0]
+//       ?.result as Partial<AnalysisOutput> | null;
+//     const season = resultData?.season || "Your";
+//     return {
+//       title: `${season} Season - Color Analysis Results`,
+//     };
+//   } catch {
+//     return { title: `Analysis Results - ${analysisId}` };
+//   }
+// }
 
 export default async function AnalysisResultsPage({
   params,
@@ -48,64 +48,40 @@ export default async function AnalysisResultsPage({
     notFound();
   }
 
-  let analysisRecord;
-  let authSession;
-  try {
-    const sessionPromise = auth.api.getSession({ headers });
+  const sessionPromise = auth.api.getSession({ headers });
 
-    const analysisResults = await db
-      .select({
-        id: analyses.id,
-        result: analyses.result,
-        inputData: analyses.inputData,
-        createdAt: analyses.createdAt,
-        userId: analyses.userId,
-      })
-      .from(analyses)
-      .where(eq(analyses.id, analysisId))
-      .limit(1);
+  const analysisResultsPromise = db
+    .select({
+      id: analyses.id,
+      result: analyses.result,
+      createdAt: analyses.createdAt,
+      userId: analyses.userId,
+    })
+    .from(analyses)
+    .where(eq(analyses.id, analysisId))
+    .limit(1);
 
-    analysisRecord = analysisResults[0];
+  const [authSession, analysisResults] = await Promise.all([
+    sessionPromise,
+    analysisResultsPromise,
+  ]);
 
-    try {
-      authSession = await sessionPromise;
-      console.log(
-        `Auth session retrieved for analysis page ${analysisId}. User ID: ${
-          authSession?.user?.id ?? "Not logged in"
-        }`
-      );
-    } catch (authError) {
-      console.error(
-        `Error fetching auth session on analysis page ${analysisId}:`,
-        authError
-      );
-      authSession = null;
-    }
+  const analysisRecord = analysisResults[0];
 
-    if (!analysisRecord) {
-      console.log(
-        `AnalysisResultsPage: Analysis not found for ID: ${analysisId}`
-      );
-      notFound();
-    }
-  } catch (error) {
-    console.error(
-      `AnalysisResultsPage: Database error fetching data for analysis ${analysisId}:`,
-      error
+  if (!analysisRecord) {
+    console.log(
+      `AnalysisResultsPage: Analysis not found for ID: ${analysisId}`
     );
+    notFound();
+  }
+
+  if (!analysisRecord?.result) {
     return (
       <div className="container mx-auto px-4 py-8 text-center text-destructive">
         <AlertCircle className="inline-block mr-2" />
         Error loading analysis results. Please try again later.
       </div>
     );
-  }
-
-  if (!analysisRecord?.result || !analysisRecord?.inputData) {
-    console.log(
-      `AnalysisResultsPage: Analysis result or input data is null/missing for ID: ${analysisId}`
-    );
-    notFound();
   }
 
   const isAnonymousUser = authSession?.user?.isAnonymous === true;

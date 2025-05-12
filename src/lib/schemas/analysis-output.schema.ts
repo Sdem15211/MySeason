@@ -18,11 +18,6 @@ const MakeupRecommendationsSchema = z.object({
   complementaryEyeColors: z.array(ColorInfoSchema).min(2).max(3),
 });
 
-const StyleScenarioSchema = z.object({
-  colorCombinationAdvice: z.string(),
-  colorCombinationColors: z.array(ColorInfoSchema).length(2),
-});
-
 export const AnalysisOutputSchema = z.object({
   season: z.string().describe("One of the 12 seasons"),
   seasonExplanation: z.string().describe("Explanation of the season"),
@@ -37,11 +32,6 @@ export const AnalysisOutputSchema = z.object({
   colorsToAvoid: z.array(ColorInfoSchema).length(3),
   primaryMetal: z.enum(["Gold", "Silver", "Bronze"]),
   metalTonesExplanation: z.string(),
-  styleScenarios: z.object({
-    professional: StyleScenarioSchema,
-    elegant: StyleScenarioSchema,
-    casual: StyleScenarioSchema,
-  }),
   hairColorGuidance: z.object({
     lighterToneEffect: z
       .string()

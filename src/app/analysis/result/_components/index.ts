@@ -6,7 +6,6 @@ import { SaveAnalysisPrompt } from "./save-analysis-prompt";
 import { MakeupCard } from "./makeup";
 import { MakeupColorCard } from "./makeup";
 import { HairCard } from "./hair-card";
-import { StyleCard } from "./style-card";
 
 export {
   ColorItem,
@@ -17,5 +16,4 @@ export {
   MakeupCard,
   MakeupColorCard,
   HairCard,
-  StyleCard,
 };

@@ -300,7 +300,7 @@ export function AnalysisProcessor({ sessionId }: AnalysisProcessorProps) {
         <>
           <Check className="h-12 w-12 text-orange" />
           <p className="text-center h-10 title">{progressMessage}</p>
-          <p className="subtitle">Moving on to questionnaire...</p>
+          <p className="subtitle">Moving on to results...</p>
         </>
       ) : (
         <>

@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server"; // Use NextRequest for typed request access if needed later
 
-// Define a base type for API handlers for clarity
-// Using unknown for context as it varies depending on route structure (e.g., params)
-type ApiHandler<T = unknown> = (
-  request: NextRequest, // Using NextRequest for better type safety potentially
-  context: { params?: unknown } // Basic context, can be refined
-) => Promise<NextResponse<T>>;
+// Define a more flexible ApiHandler type
+// TResponse is the expected data type in the NextResponse on success
+// TContext is the shape of the context object, typically { params: { ... } }
+export type ApiHandler<
+  TResponsePayload = unknown,
+  TContextParams = Record<string, string | string[] | undefined>
+> = (
+  request: NextRequest,
+  context: { params: TContextParams }
+) => Promise<
+  NextResponse<
+    TResponsePayload | { error: { message: string; status: number } }
+  >
+>;
 
 /**
  * Wraps an API route handler with basic error handling.
@@ -15,9 +23,23 @@ type ApiHandler<T = unknown> = (
  * @param handler The original API route handler.
  * @returns A new handler function with error handling baked in.
  */
-export function withErrorHandler<T = unknown>(
-  handler: ApiHandler<T>
-): ApiHandler<T> {
+// export function withErrorHandler<T = unknown>(
+//   handler: ApiHandler<T>
+// ): ApiHandler<T> {
+
+export function withErrorHandler<
+  TResponsePayload = unknown,
+  TContextParams = Record<string, string | string[] | undefined>
+>(
+  handler: ApiHandler<TResponsePayload, TContextParams>
+): (
+  request: NextRequest,
+  context: { params: TContextParams }
+) => Promise<
+  NextResponse<
+    TResponsePayload | { error: { message: string; status: number } }
+  >
+> {
   return async (request, context) => {
     try {
       // Execute the original handler
@@ -40,10 +62,7 @@ export function withErrorHandler<T = unknown>(
 
       // Return a standardized JSON error response
       // Ensure NextResponse generic matches the handler's expected type or use a specific error type
-      return NextResponse.json(
-        { error: { message, status } },
-        { status }
-      ) as NextResponse<T>; // Cast might be needed depending on usage
+      return NextResponse.json({ error: { message, status } }, { status }); // No cast needed here if the return type of the outer function is correct
     }
   };
 }

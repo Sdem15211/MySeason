@@ -30,7 +30,6 @@ import {
   OverallVibeCard,
   SaveAnalysisPrompt,
   ColorListCard,
-  StyleCard,
   HairCard,
   MakeupCard,
   MakeupColorCard,
@@ -154,10 +153,10 @@ export function AnalysisResultsClient({
             Colors
           </TabsTrigger>
           <TabsTrigger
-            value="style"
+            value="metal"
             className="px-4 py-5 data-[state=active]:bg-orange/15 bg-[#EEEEEE] data-[state=active]:text-orange text-sm"
           >
-            Style
+            Metal
           </TabsTrigger>
           <TabsTrigger
             value="hair"
@@ -210,47 +209,7 @@ export function AnalysisResultsClient({
             />
           </TabsContent>
 
-          <TabsContent value="style" className="flex flex-col gap-16">
-            <div className="flex flex-col gap-8">
-              <p className="text-lg font-semibold text-brown tracking-tighter">
-                Styling advice 😎
-              </p>
-              <div className="flex flex-col gap-8">
-                <StyleCard
-                  description={
-                    result.styleScenarios.professional.colorCombinationAdvice
-                  }
-                  scenario="Professional"
-                  colors={
-                    result.styleScenarios.professional.colorCombinationColors
-                  }
-                  icon={
-                    <Briefcase className="size-5 text-orange absolute top-5 right-5" />
-                  }
-                />
-                <StyleCard
-                  description={
-                    result.styleScenarios.elegant.colorCombinationAdvice
-                  }
-                  scenario="Elegant"
-                  colors={result.styleScenarios.elegant.colorCombinationColors}
-                  icon={
-                    <Gem className="size-5 text-orange absolute top-5 right-5" />
-                  }
-                />
-                <StyleCard
-                  description={
-                    result.styleScenarios.casual.colorCombinationAdvice
-                  }
-                  scenario="Casual"
-                  colors={result.styleScenarios.casual.colorCombinationColors}
-                  icon={
-                    <Shirt className="size-5 text-orange absolute top-5 right-5" />
-                  }
-                />
-              </div>
-            </div>
-            <div className="w-full h-px bg-black/10" />
+          <TabsContent value="metal" className="flex flex-col gap-16">
             <div className="flex flex-col gap-8">
               <p className="text-lg font-semibold text-brown tracking-tighter">
                 Metal Recommendations 💎
